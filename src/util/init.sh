@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-PATH_BASE=$(readlink -f ${BASH_SOURCE[0]%/*}"/../../")
-
 load_lib() {
     # prepare
     PATH_TMP=$(pwd)

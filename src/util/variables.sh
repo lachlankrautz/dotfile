@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+VERSION=1.0
 HELP=0
 WINDOWS=0
 CONFIG_DEFAULT=${PATH_BASE}/config/default.ini
@@ -15,7 +16,7 @@ if [ ! -f ${CONFIG_LOCAL} ]; then
 
 [repo]
 ; set local config loaded to remove safety
-local_config_loaded=1
+local_config_loaded=
 ; dotfile_repo=dotfile_store
 EOF
 fi

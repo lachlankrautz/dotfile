@@ -40,7 +40,7 @@ dotfile_option_v() {
     dotfile_option_version
 }
 dotfile_option_version() {
-    echo "Version ${VERSION}"
+    echo "Version ${term_fg_yellow}${VERSION}${term_reset}"
 }
 dotfile_option_h() {
     HELP=1

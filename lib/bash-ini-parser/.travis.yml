@@ -1,0 +1,17 @@
+language: c
+
+compiler:
+  - gcc
+
+before_install:
+
+script: cd t && make SHELL=/bin/bash
+
+## whitelist
+branches:
+  only:
+    - master
+
+notifications:
+  email:
+    - albertofanjul@gmail.com

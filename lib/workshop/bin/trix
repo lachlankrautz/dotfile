@@ -1,0 +1,15 @@
+#/usr/bin/env sh
+
+# Gets the lib folder relative to this script location
+# If this script is in /foo/bin, points to /foo/lib/workshop
+lib_path="$(cd "$(dirname "$0")/../lib/workshop";pwd)"
+
+. "$lib_path/common.sh"    || exit 1
+. "$lib_path/dispatch.sh"  || exit 1
+. "$lib_path/trix/cli.sh"  || exit 1
+. "$lib_path/trix/trix.sh" || exit 1
+
+# This variable should not be used anymore
+unset lib_path
+
+trix "${@:-}"

@@ -10,11 +10,13 @@ if [ ! -f ${CONFIG_DEFAULT} ]; then
 fi
 if [ ! -f ${CONFIG_LOCAL} ]; then
     cat << EOF >> ${CONFIG_LOCAL}
+; Local config (not in version control)
+; Uncomment to override defaults
 
-# Local config (not in version control)
-# Uncomment to override defaults
-
-# DOTFILE_DIR = "dotfile_repo"
+[repo]
+; set local config loaded to remove safety
+local_config_loaded=1
+; dotfile_repo=dotfile_store
 EOF
 fi
 cfg_parser ${CONFIG_DEFAULT}

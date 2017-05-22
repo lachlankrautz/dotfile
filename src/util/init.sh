@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 
 load_lib() {
-    # prepare
-    PATH_TMP=$(pwd)
-    LIB_DIR=${PATH_BASE}/lib/${1%/*}
-    LIB_FILE=${1##*/}
+    local PATH_TMP=$(pwd)
+    local LIB_DIR=${PATH_BASE}/lib/${1%/*}
+    local LIB_FILE=${1##*/}
 
-    # do
     cd ${LIB_DIR}
     source ${LIB_FILE}
     cd ${PATH_TMP}
-
-    #cleanup
-    unset PATH_TMP
-    unset LIB_DIR
-    unset LIB_FILE
 }
 
 load_lib "bashful/bin/bashful"

@@ -19,6 +19,7 @@ ${term_fg_yellow}Options:${term_reset}
 
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}          Sync dotfiles to home dir
+  ${term_fg_green}status${term_reset}        Show status of dotfiles in home dir
 
 EOF
 }
@@ -39,7 +40,15 @@ dotfile_option_help() {
 }
 dotfile_command_sync() {
     if [ ${HELP} = 0 ]; then
-        source ${PATH_BASE}/src/command/sync.sh
+        WRITABLE=1
+        run_command "sync"
+    else
+        dispatch dotfile "$@"
+    fi
+}
+dotfile_command_status() {
+    if [ ${HELP} = 0 ]; then
+        run_command "sync"
     else
         dispatch dotfile "$@"
     fi

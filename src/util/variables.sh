@@ -29,7 +29,7 @@ local_config_loaded=0
 ;;; git repository holding dotfiles
 dotfiles_git=
 
-;;; dir to clone dotfile repo(s) into
+;;; home dir to clone dotfile repo(s) into
 ;;; absolute path or relative to this project
 dotfiles_home=~/
 
@@ -61,9 +61,10 @@ EOF
     SYNC_EXCLUDE=(.git .gitignore)
 
     # get current dotfile dir
-    DOTFILES_DIR=${dotfiles_git##*:}
-    DOTFILES_DIR=${DOTFILES_DIR##*/}
-    DOTFILES_DIR=${dotfiles_home}/${DOTFILES_DIR%.git}
+    DOTFILES_DIR="${dotfiles_git##*:}"
+    DOTFILES_DIR="${DOTFILES_DIR##*/}"
+    DOTFILES_DIR="${dotfiles_home}/${DOTFILES_DIR%.git}"
+    DOTFILES_DIR_SHARED="${DOTFILES_DIR}/shared"
 }
 
 load_variables

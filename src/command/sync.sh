@@ -68,9 +68,9 @@ ensure_dotfiles() {
 }
 
 sync_dir() {
-    local SRC=${1}
-    local DEST=${2}
-    local BACKUP=${3}
+    local SRC="${1}"
+    local DEST="${2}"
+    local BACKUP="${3}"
     [ -d "${SRC}" ] || return 1
 
     heading "Sync ${DEST}"
@@ -82,11 +82,11 @@ sync_dir() {
 
     info "File summary"
     local FILE
-    for FILE in $(listdir "${SRC}"); do
+    for FILE in $(listdir "${SRC}/shared"); do
 
         FILE=$(echo ${FILE##*/} | lower)
         if ! in_array "${FILE}" "${SYNC_EXCLUDE[@]}"; then
-            smart_link "${SRC}" "${DEST}" "${BACKUP}" "${FILE}"
+            smart_link "${SRC}/shared" "${DEST}" "${BACKUP}" "${FILE}"
         else
             echo "        Ignored: ${FILE}"
         fi

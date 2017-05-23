@@ -29,8 +29,8 @@ command_import() {
 list_available() {
     info "Available imports"
 
-    local DOTFILES=$(listdir "${DOTFILES_DIR}")
-    DOTFILES="${DOTFILES[@]//${DOTFILES_DIR}\//}"
+    local DOTFILES=$(listdir "${DOTFILES_DIR_SHARED}")
+    DOTFILES="${DOTFILES[@]//${DOTFILES_DIR_SHARED}\//}"
 
     local HOME_FILES=$(listdir "${home_dir}")
     HOME_FILES="${HOME_FILES[@]//${home_dir}\//}"
@@ -63,7 +63,7 @@ import_dotfiles_pattern() {
 import_dotfile() {
     local FILE="${1}"
     local HOME_PATH="${home_dir}/${FILE##*/}"
-    local DOTFILE_PATH="${DOTFILES_DIR}/${FILE##*/}"
+    local DOTFILE_PATH="${DOTFILES_DIR_SHARED}/${FILE##*/}"
 
     if [ ! -e "${HOME_PATH}" ]; then
         echo_status "${term_fg_red}" " Import missing" "${HOME_PATH}"
@@ -73,10 +73,14 @@ import_dotfile() {
         echo_status "${term_fg_yellow}" "  Already found" "${HOME_PATH}"
         return 1
     fi
+    if [ -L "${HOME_PATH}" ]; then
+        echo_status "${term_fg_red}" " Import is link" "${HOME_PATH}"
+        return 1
+    fi
 
     if mv "${HOME_PATH}" "${DOTFILE_PATH}"; then
         echo_status "${term_fg_green}" "       Imported" "${HOME_PATH}"
-        smart_link "${DOTFILES_DIR}" "${home_dir}" "${backup_dir}" "${FILE}"
+        smart_link "${DOTFILES_DIR_SHARED}" "${home_dir}" "${backup_dir}" "${FILE}"
         return 0
     else
         echo_status "${term_fg_red}" "  Import failed" "${HOME_PATH}"

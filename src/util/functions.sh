@@ -107,14 +107,14 @@ dir_status() {
     else
         COLOUR="${term_fg_red}"
     fi
-    echo_status "${COLOUR}" "${TITLE}" "${DIR//$HOME/\~}"
+    echo_status "${COLOUR}" "${TITLE}" "${DIR}"
 }
 
 echo_status() {
     local COLOUR=${1}
     local TITLE=${2}
     local MESSAGE=${3}
-    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
+    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE//$HOME/\~}${term_reset}"
 }
 
 heading() {
@@ -123,10 +123,11 @@ heading() {
 }
 
 run_command() {
-    local PATH_COMMAND="${PATH_BASE}/src/command/${1}.sh"
+    local COMMAND=${1}; shift
+    local PATH_COMMAND="${PATH_BASE}/src/command/${COMMAND}.sh"
     [ -f "${PATH_COMMAND}" ] || die "Command not found ${PATH_COMMAND}"
     source ${PATH_COMMAND}
-    command_${1}
+    command_${COMMAND} "$@"
 }
 
 backup_move() {

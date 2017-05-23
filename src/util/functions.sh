@@ -51,14 +51,7 @@ smart_link() {
             echo_status "${term_fg_yellow}" "      No Backup" "${ITEM}"
             return 1
         fi
-        if ! backup_move "${SRC}" "${BACKUP}" "${ITEM}"; then
-            echo_status "${term_fg_red}" "  Backup Failed" "${ITEM}"
-            return 1
-        fi
-        echo_status "${term_fg_yellow}" " Backup Created" "${ITEM}"
-
-        # remove in a minute
-        return
+        backup_move "${DEST}" "${BACKUP}" "${ITEM}" || return 1
     fi
 
     if [ ! -d "${DEST}" ]; then
@@ -81,7 +74,7 @@ smart_link() {
         cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
     else
         # unix link attempt
-        ln -s ${SRC}/${ITEM} ${DEST}/${ITEM}
+        ln -s "${SRC}/${ITEM}" "${DEST}/${ITEM}" > /dev/null 2>&1
     fi
 
     # must be next command after the link attempt to catch the process result
@@ -140,12 +133,15 @@ backup_move() {
     local SRC=${1%/}
     local DEST=${2%/}
     local FILE=${3##*/}
+    local BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
 
+    mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"
 
-    echo " src: ${SRC}"
-    echo "dest: ${DEST}"
-    echo "file: ${FILE}"
-    echo "time: ${TIMESTAMP}"
-
-    return 0
+    local SUCCESS=${?}
+    if [ ${SUCCESS} -eq 0 ]; then
+        echo_status "${term_fg_yellow}" " Backup Created" "${BACKUP_FILE}"
+    else
+        echo_status "${term_fg_red}" "  Backup Failed" "${FILE}"
+    fi
+    return ${SUCCESS}
 }

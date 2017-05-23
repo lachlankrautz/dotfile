@@ -25,11 +25,6 @@ EOF
 command_sync() {
     truth ${WRITABLE} && title_sync || title_status
 
-    rm -rf "${home_dir}/folder"
-    mkdir "${home_dir}/folder"
-    rm "${home_dir}/bar.txt"
-    touch "${home_dir}/bar.txt"
-
     ensure_filesystem
     ensure_dotfiles
     sync_dir "${DOTFILES_DIR}" "${home_dir}" "${backup_dir}"
@@ -47,9 +42,7 @@ ensure_filesystem() {
 }
 
 ensure_dotfiles() {
-    if [ ! -d "${dotfiles_home}" ]; then
-        return 1
-    fi
+    [ -d "${dotfiles_home}" ] || return 1
 
     heading "Dotfiles"
 

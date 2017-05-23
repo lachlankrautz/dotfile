@@ -19,7 +19,8 @@ ${term_fg_yellow}Options:${term_reset}
 
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}          Sync dotfiles to home dir
-  ${term_fg_green}status${term_reset}        Show status of dotfiles in home dir
+  ${term_fg_green}status${term_reset}        Show status of dotfile links to home dir
+  ${term_fg_green}import${term_reset}        Import dotfile from home back into repo and link
 
 EOF
 }
@@ -49,6 +50,13 @@ dotfile_command_sync() {
 dotfile_command_status() {
     if [ ${HELP} = 0 ]; then
         run_command "sync"
+    else
+        dispatch dotfile "$@"
+    fi
+}
+dotfile_command_import() {
+    if [ ${HELP} = 0 ]; then
+        run_command "import"
     else
         dispatch dotfile "$@"
     fi

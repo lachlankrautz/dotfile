@@ -27,23 +27,23 @@ load_config() {
 local_config_loaded=0
 
 ;;; git repository holding dotfiles
-; dotfiles_git=
+dotfiles_git=
 
 ;;; dir to clone dotfile repo(s) into
 ;;; absolute path or relative to this project
-; dotfiles_home=~/dotfiles
+dotfiles_home=~/
 
 ;;; home dir to sync to
-; home_dir=~/
+home_dir=~/
 
 ;;; backup dir for displaced home dotfiles
-; backup_dir=~/dotfiles_bak
+backup_dir=~/home_bak
 
 ;;; also sync dotfiles to /root
 ; sync_to_root=0
 
 ;;; backup dir for displaced root dotfiles
-; root_backup_dir=/root/dotfiles_bak
+; root_backup_dir=
 EOF
 
     cfg_parser ${CONFIG_DEFAULT}

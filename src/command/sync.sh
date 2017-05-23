@@ -25,38 +25,42 @@ EOF
 command_sync() {
     truth ${WRITABLE} && title_sync || title_status
 
-    # check_filesystem
+    rm -rf "${home_dir}/folder"
+    mkdir "${home_dir}/folder"
+    rm "${home_dir}/bar.txt"
+    touch "${home_dir}/bar.txt"
 
-    heading "Sync dotfiles"
-    sync_dotfiles
-    echo
-
-    heading "Sync home"
-    sync_home ${DOTFILES_DIR} ${home_dir}
-    echo
-
-    truth ${sync_to_root} && {
-        heading "Sync root"
-        sync_home ${DOTFILES_DIR} /root
-        echo
-    }
+    ensure_filesystem
+    ensure_dotfiles
+    sync_dir "${DOTFILES_DIR}" "${home_dir}" "${backup_dir}"
+    truth ${sync_to_root} && sync_dir "${DOTFILES_DIR}" "/root" "${root_backup_dir}"
 }
 
-check_filesystem() {
-    heading "Config"
+ensure_filesystem() {
+    heading "Filesystem"
+
+    ensure_dir "${dotfiles_home}" "Dotfiles project(s) home"
+    ensure_dir "${home_dir}" "Sync dir"
+    ensure_dir "${backup_dir}" "Backup dir"
+    truth ${sync_to_root} && ensure_dir "${root_backup_dir}" "Root backup dir"
     echo
 }
 
-sync_dotfiles() {
-    ensure_dir "dotfiles home" ${dotfiles_home} || return
-
-    if [ -d "${DOTFILES_DIR}/.git" ]; then
-        info "Confirmed dotfiles ${DOTFILES_DIR}"
-        return 0
+ensure_dotfiles() {
+    if [ ! -d "${dotfiles_home}" ]; then
+        return 1
     fi
 
+    heading "Dotfiles"
+
+    if [ -d "${DOTFILES_DIR}/.git" ]; then
+        info "Confirmed dotfiles project ${DOTFILES_DIR}"
+        echo
+        return 0
+    fi
     if [ -z "${dotfiles_git}" ]; then
         warn "Dotfile git is not set"
+        echo
         return 1
     fi
 
@@ -66,32 +70,33 @@ sync_dotfiles() {
     git clone ${dotfiles_git} && info "Cloned ${dotfiles_git} => ${DOTFILES_DIR}"
     local SUCCESS=${?}
     cd ${TEMP_PWD}
+    echo
     return ${SUCCESS}
 }
 
-sync_home() {
-    # don't attempt to create /root
-    local MESSAGE="Missing sync dir ${2}"
-    if [ ${2} = /root ]; then
-        if [ ! -d /root ]; then
-            warn ${MESSAGE}
-            return
-        fi
-    else
-        ensure_dir "Sync dir" ${2} || return
-    fi
+sync_dir() {
+    local SRC=${1}
+    local DEST=${2}
+    local BACKUP=${3}
+    [ -d "${SRC}" ] || return 1
 
-    info "Confirmed sync dir ${2}"
-    [ -d ${1} ] || return
+    heading "Sync ${DEST}"
 
+    info "Dir summary"
+    dir_status "       Dotfiles" "${SRC}"
+    dir_status "           Home" "${DEST}"
+    dir_status "         Backup" "${BACKUP}"
+
+    info "File summary"
     local FILE
-    for FILE in $(listdir ${1}); do
-        FILE=$(echo ${FILE} | lower)
-        if [ $(in_array ${FILE} ${SYNC_EXCLUDE}) ]; then
-            echo "in array: ${FILE}"
+    for FILE in $(listdir "${SRC}"); do
+
+        FILE=$(echo ${FILE##*/} | lower)
+        if ! in_array "${FILE}" "${SYNC_EXCLUDE[@]}"; then
+            smart_link "${SRC}" "${DEST}" "${BACKUP}" "${FILE}"
         else
-            echo "not in array: ${FILE}"
+            echo "        Ignored: ${FILE}"
         fi
-        # smart_link ${1} ${2} ${FILE##*/}
     done
+    echo
 }

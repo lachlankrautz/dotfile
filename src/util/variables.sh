@@ -17,8 +17,8 @@ load_variables() {
 load_config() {
     local CONFIG_DEFAULT=${PATH_BASE}/config/default.ini
     local CONFIG_LOCAL=${PATH_BASE}/config/local.ini
-    [ -f ${CONFIG_DEFAULT} ] || die "Missing config file - ${CONFIG_DEFAULT}"
-    [ -f ${CONFIG_LOCAL} ] || cat << EOF >> ${CONFIG_LOCAL}
+    [ -f "${CONFIG_DEFAULT}" ] || die "Missing config file - ${CONFIG_DEFAULT}"
+    [ -f "${CONFIG_LOCAL}" ] || cat << EOF >> ${CONFIG_LOCAL}
 ;;; Local config - not in version control
 
 [general]

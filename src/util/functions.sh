@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 
 ensure_dir() {
-    if [ -d ${2} ]; then
+    local DIR=${1}
+    local NAME=${2}
+    local MESSAGE="${NAME} ${DIR}"
+    if [ -z "${DIR}" ]; then
+        warn "${NAME} not set"
+        return 1
+    fi
+    if [ -d "${DIR}" ]; then
+        info "Confirmed ${MESSAGE}"
         return 0
     fi
-    mkdir -p ${2}
+    mkdir -p ${DIR}
     local SUCCESS=${?}
-    local MESSAGE="${1} ${2}"
     if [ ${SUCCESS} -eq 0 ]; then
         info "Created ${MESSAGE}"
     else
@@ -22,30 +29,49 @@ echo_win_path() {
 smart_link() {
     local SRC=${1%/}
     local DEST=${2%/}
-    local ITEM=${3##*/}
-    local LINK_MESSAGE="${SRC}/${ITEM} => ${DEST}/${ITEM}"
+    local BACKUP=${3%/}
+    local ITEM=${4##*/}
 
-    if [ -L ${DEST}/${ITEM} ]; then
-        info "Existing link ${LINK_MESSAGE}"
+    if [ -L "${DEST}/${ITEM}" ]; then
+        echo_status ${term_fg_green} "         Linked" ${ITEM}
         return 0
-    elif [ -e ${DEST}/${ITEM} ]; then
-        if [ ! -d ${backup_dir} ]; then
-            # mkdir ${backup_dir} || {
 
+    elif [ -e "${DEST}/${ITEM}" ]; then
 
-            #}
-            if [ $? -eq 0 ]; then
-                info "Link created ${LINK_MESSAGE}"
-            else
-                die "Failed to link ${LINK_MESSAGE}"
+        if ! truth ${WRITABLE}; then
+            local BACKUP_COLOUR=${term_fg_yellow}
+            if [ ! -d "${BACKUP}" ]; then
+                BACKUP_COLOUR=${term_fg_red}
             fi
+            echo_status ${BACKUP_COLOUR} "    Backup+Link" "${ITEM}"
+            return 0
         fi
-        die "No backup dir available for file ${DEST}/${ITEM}"
-        mv ${DEST}/${ITEM} ${backup_dir} || die "Failed to backup file ${DEST}/${ITEM}"
+
+        if [ ! -d "${BACKUP}" ]; then
+            echo_status "${term_fg_yellow}" "      No Backup" "${ITEM}"
+            return 1
+        fi
+        if ! backup_move "${SRC}" "${BACKUP}" "${ITEM}"; then
+            echo_status "${term_fg_red}" "  Backup Failed" "${ITEM}"
+            return 1
+        fi
+        echo_status "${term_fg_yellow}" " Backup Created" "${ITEM}"
+
+        # remove in a minute
+        return
+    fi
+
+    if [ ! -d "${DEST}" ]; then
+        echo_status "${term_fg_red}" "       Link Failed" ${ITEM}
+        return 1
+    fi
+    if ! truth ${WRITABLE}; then
+        echo_status "${term_fg_white}" "           Link" ${ITEM}
+        return 0
     fi
 
     if [ ${WINDOWS} -eq 1 ]; then
-        [ -d ${SRC}/${ITEM} ] && OPT="/D " || OPT=""
+        [ -d "${SRC}/${ITEM}" ] && OPT="/D " || OPT=""
 
         local WIN_SRC=$(echo_win_path ${SRC})
         local WIN_DEST=$(echo_win_path ${DEST})
@@ -60,9 +86,11 @@ smart_link() {
 
     # must be next command after the link attempt to catch the process result
     if [ $? -eq 0 ]; then
-        info "Link created ${LINK_MESSAGE}"
+        echo_status ${term_fg_green} "   Link Created" ${ITEM}
+        return 0
     else
-        die "Failed to link ${LINK_MESSAGE}"
+        echo_status ${term_fg_red} "    Link failed" ${ITEM}
+        return 1
     fi
 }
 
@@ -74,13 +102,50 @@ doc_title() {
     echo -n "${term_reset}"
 }
 
+dir_status() {
+    local COLOUR
+    local TITLE=${1}
+    local DIR=${2}
+    if [ -z "${DIR}" ]; then
+        COLOUR="${term_fg_yellow}"
+        DIR="not set"
+    elif [ -d "${DIR}" ]; then
+        COLOUR="${term_fg_green}"
+    else
+        COLOUR="${term_fg_red}"
+    fi
+    echo_status "${COLOUR}" "${TITLE}" "${DIR//$HOME/\~}"
+}
+
+echo_status() {
+    local COLOUR=${1}
+    local TITLE=${2}
+    local MESSAGE=${3}
+    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
+}
+
 heading() {
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${1}${term_reset}"
+    local MESSAGE=${1}
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//$HOME/\~}${term_reset}"
 }
 
 run_command() {
     local PATH_COMMAND="${PATH_BASE}/src/command/${1}.sh"
-    [ -f ${PATH_COMMAND} ] || die "Command not found ${PATH_COMMAND}"
+    [ -f "${PATH_COMMAND}" ] || die "Command not found ${PATH_COMMAND}"
     source ${PATH_COMMAND}
     command_${1}
+}
+
+backup_move() {
+    local SRC=${1%/}
+    local DEST=${2%/}
+    local FILE=${3##*/}
+
+
+    echo " src: ${SRC}"
+    echo "dest: ${DEST}"
+    echo "file: ${FILE}"
+    echo "time: ${TIMESTAMP}"
+
+    return 0
 }

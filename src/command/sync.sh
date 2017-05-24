@@ -27,43 +27,58 @@ command_sync() {
 
     ensure_filesystem
     ensure_dotfiles
-    sync_dir "${DOTFILES_DIR}" "${home_dir}" "${backup_dir}"
-    truth ${sync_to_root} && sync_dir "${DOTFILES_DIR}" "/root" "${root_backup_dir}"
+    sync_dir "${DOTFILES_DIR}" "${home_dir}" "${BACKUP_DIR}"
+    truth ${sync_to_root} && sync_dir "${DOTFILES_DIR}" "/root" "${ROOT_BACKUP_DIR}"
 }
 
 ensure_filesystem() {
     heading "Filesystem"
 
-    ensure_dir "${dotfiles_home}" "Dotfiles project(s) home"
-    ensure_dir "${home_dir}" "Sync dir"
-    ensure_dir "${backup_dir}" "Backup dir"
-    truth ${sync_to_root} && ensure_dir "${root_backup_dir}" "Root backup dir"
+    ensure_dir "${home_dir}" "home dir"
+    ensure_dir "${config_dir}" "config dir"
+    ensure_dir "${BACKUP_DIR}" "backup dir"
+    truth ${sync_to_root} && ensure_dir "${ROOT_BACKUP_DIR}" "Root backup dir"
     echo
 }
 
 ensure_dotfiles() {
-    [ -d "${dotfiles_home}" ] || return 1
+    [ -d "${config_dir}" ] || return 1;
 
-    heading "Dotfiles"
+    heading "Config repo"
 
-    if [ -d "${DOTFILES_DIR}/.git" ]; then
-        info "Confirmed dotfiles project ${DOTFILES_DIR}"
-        echo
-        return 0
+    if [ ! -d "${DOTFILES_DIR}" ] && [ ! -z "${git_repo}" ]; then
+        if ! clone_repo "${git_repo}" "${repo}"; then
+            echo
+            return 1
+        fi
     fi
-    if [ -z "${dotfiles_git}" ]; then
-        warn "Dotfile git is not set"
+
+    local SUCCESS=0
+    if ! ensure_dir "${DOTFILES_DIR}" "config repo"; then
         echo
         return 1
     fi
+    ensure_dir "${DOTFILES_DIR}/shared" "group" || SUCCESS=1
+    if truth "${sync_to_root}"; then
+        ensure_dir "${DOTFILES_DIR}/root" "group" || SUCCESS=1
+    fi
+    if truth "${WINDOWS}"; then
+        ensure_dir "${DOTFILES_DIR}/windows" "group" || SUCCESS=1
+    fi
+    echo
+    return "${SUCCESS}"
+}
 
-    # clone into dotfiles dir
+clone_repo() {
+    local GIT_REPO="${1}"
+    local NAME="${2}"
+
+    # clone into config_dir
     local TEMP_PWD=$(pwd)
-    cd ${dotfiles_home}
-    git clone ${dotfiles_git} && info "Cloned ${dotfiles_git} => ${DOTFILES_DIR}"
+    cd ${config_dir}
+    git clone ${git_repo} ${repo} && info "Cloned ${git_repo} => ${config_dir}/${repo}"
     local SUCCESS=${?}
     cd ${TEMP_PWD}
-    echo
     return ${SUCCESS}
 }
 
@@ -76,9 +91,9 @@ sync_dir() {
 
     heading "Sync ${DEST}"
 
-    local SUB_DIRS=()
 
     # Build ordered sources list
+    local SUB_DIRS=()
     if [ "${DEST}" = "/root" ] && [ -d "${SRC}/root" ]; then
         SUB_DIRS+=("root")
     fi
@@ -89,28 +104,37 @@ sync_dir() {
         SUB_DIRS+=("shared")
     fi
     if [ "${#SUB_DIRS[@]}" = 0 ]; then
-        SUB_DIRS+=("")
+        return 1
+    fi
+
+    local GROUPS_MESSAGE
+    if [ "${#SUB_DIRS[@]}" = 1 ]; then
+        GROUPS_MESSAGE="${SUB_DIRS}"
+    else
+        GROUPS_MESSAGE="($(implode "|" "${SUB_DIRS[@]}"))"
     fi
 
     info "Dir summary"
-    dir_status "       Dotfiles" "${SRC}"
     dir_status "           Home" "${DEST}"
+    dir_status "    Config repo" "${SRC}" "/${GROUPS_MESSAGE}"
     dir_status "         Backup" "${BACKUP}"
 
     info "File summary"
     local FILE
+    local FILE_CHECK
     local CHECKED=()
     for SUB_DIR in "${SUB_DIRS[@]}"; do
 
         for FILE in $(listdir "${SRC}/${SUB_DIR}"); do
 
-            FILE=$(echo ${FILE##*/} | lower)
+            FILE="${FILE##*/}"
+            FILE_CHECK=$(echo "${FILE}" | lower)
 
-            if ! in_array "${FILE}" "${SYNC_EXCLUDE[@]}"; then
+            if ! in_array "${FILE_CHECK}" "${SYNC_EXCLUDE[@]}"; then
 
                 # order of precedence root > windows > shared
-                if ! in_array "${FILE}" "${CHECKED[@]}"; then
-                    CHECKED+=("${FILE}")
+                if ! in_array "${FILE_CHECK}" "${CHECKED[@]}"; then
+                    CHECKED+=("${FILE_CHECK}")
                     smart_link "${SRC}" "${SUB_DIR}" "${DEST}" "${BACKUP}" "${FILE}"
                 fi
             else
@@ -118,6 +142,9 @@ sync_dir() {
             fi
         done
     done
+    if [ "${#CHECKED[@]}" -eq 0 ]; then
+        info "No files in config repo, get started with \"dotfile import\""
+    fi
 
     echo
     return 0

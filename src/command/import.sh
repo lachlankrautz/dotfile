@@ -34,8 +34,10 @@ command_import() {
 list_available() {
     info "Available imports"
 
-    local DOTFILES=$(listdir "${DOTFILES_DIR_SHARED}")
-    DOTFILES="${DOTFILES[@]//${DOTFILES_DIR_SHARED}\//}"
+    # TODO must loop groups
+    local DIR="${DOTFILES_DIR}/shared"
+    local DOTFILES=$(listdir "${DIR}")
+    DOTFILES="${DOTFILES[@]//${DIR}\//}"
 
     local HOME_FILES=$(listdir "${home_dir}")
     HOME_FILES="${HOME_FILES[@]//${home_dir}\//}"
@@ -55,7 +57,7 @@ import_dotfiles_pattern() {
     local SUB_DIR="${2}"
     WRITABLE=1
 
-    info "Importing ${PATTERN} into ${DOTFILES_PROJECT_NAME}"
+    info "Importing ${PATTERN} into ${repo}"
     local DOTFILES=($(find "${home_dir}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
     if [ "${#DOTFILES[@]}" -eq 0 ]; then
         error "No files matching pattern: ${PATTERN}"
@@ -68,7 +70,7 @@ import_dotfiles_pattern() {
         return 1
     fi
 
-    DOTFILES="${DOTFILES[@]//${home_dir}\//}"
+    DOTFILES=("${DOTFILES[@]//${home_dir}\//}")
     local DOTFILE
     for DOTFILE in "${DOTFILES[@]}"; do
         import_dotfile "${DOTFILE}" "${SUB_DIR}"
@@ -99,7 +101,7 @@ import_dotfile() {
 
     if mv "${HOME_PATH}" "${DOTFILE_PATH}"; then
         echo_status "${term_fg_green}" "       Imported" "${HOME_PATH}"
-        smart_link "${DOTFILES_DIR}" "${SUB_DIR}" "${home_dir}" "${backup_dir}" "${FILE}"
+        smart_link "${DOTFILES_DIR}" "${SUB_DIR}" "${home_dir}" "${BACKUP_DIR}" "${FILE}"
         return 0
     else
         echo_status "${term_fg_red}" "  Import failed" "${HOME_PATH}"

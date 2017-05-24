@@ -112,8 +112,9 @@ doc_title() {
 
 dir_status() {
     local COLOUR
-    local TITLE=${1}
-    local DIR=${2}
+    local TITLE="${1}"
+    local DIR="${2}"
+    local EXTRA="${3}"
     if [ -z "${DIR}" ]; then
         COLOUR="${term_fg_yellow}"
         DIR="not set"
@@ -122,7 +123,12 @@ dir_status() {
     else
         COLOUR="${term_fg_red}"
     fi
-    echo_status "${COLOUR}" "${TITLE}" "${DIR}"
+    echo_status "${COLOUR}" "${TITLE}" "${DIR}${EXTRA}"
+}
+
+implode() {
+    local IFS="${1}"; shift;
+    echo "$*"
 }
 
 echo_status() {

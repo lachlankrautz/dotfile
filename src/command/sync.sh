@@ -23,12 +23,12 @@ EOF
 }
 
 command_sync() {
-    truth ${WRITABLE} && title_sync || title_status
+    truth "${WRITABLE}" && title_sync || title_status
 
     ensure_filesystem
     ensure_dotfiles
     sync_dir "${DOTFILES_DIR}" "${home_dir}" "${BACKUP_DIR}"
-    truth ${sync_to_root} && sync_dir "${DOTFILES_DIR}" "/root" "${ROOT_BACKUP_DIR}"
+    truth "${sync_to_root}" && sync_dir "${DOTFILES_DIR}" "/root" "${ROOT_BACKUP_DIR}"
 }
 
 ensure_filesystem() {
@@ -37,7 +37,7 @@ ensure_filesystem() {
     ensure_dir "${home_dir}" "home dir"
     ensure_dir "${config_dir}" "config dir"
     ensure_dir "${BACKUP_DIR}" "backup dir"
-    truth ${sync_to_root} && ensure_dir "${ROOT_BACKUP_DIR}" "Root backup dir"
+    truth "${sync_to_root}" && ensure_dir "${ROOT_BACKUP_DIR}" "Root backup dir"
     echo
 }
 
@@ -65,6 +65,9 @@ ensure_dotfiles() {
     if truth "${WINDOWS}"; then
         ensure_dir "${DOTFILES_DIR}/windows" "group" || SUCCESS=1
     fi
+    if truth "${LINUX}"; then
+        ensure_dir "${DOTFILES_DIR}/linux" "group" || SUCCESS=1
+    fi
     echo
     return "${SUCCESS}"
 }
@@ -74,12 +77,12 @@ clone_repo() {
     local NAME="${2}"
 
     # clone into config_dir
-    local TEMP_PWD=$(pwd)
+    local TEMP_PWD="$(pwd)"
     cd ${config_dir}
-    git clone ${git_repo} ${repo} && info "Cloned ${git_repo} => ${config_dir}/${repo}"
-    local SUCCESS=${?}
-    cd ${TEMP_PWD}
-    return ${SUCCESS}
+    git clone "${git_repo}" "${repo}" && info "Cloned ${git_repo} => ${config_dir}/${repo}"
+    local SUCCESS="${?}"
+    cd "${TEMP_PWD}"
+    return "${SUCCESS}"
 }
 
 sync_dir() {
@@ -99,6 +102,9 @@ sync_dir() {
     fi
     if truth ${WINDOWS} && [ -d "${SRC}/windows" ]; then
         SUB_DIRS+=("windows")
+    fi
+    if truth ${LINUX} && [ -d "${SRC}/linux" ]; then
+        SUB_DIRS+=("linux")
     fi
     if [ -d "${SRC}/shared" ]; then
         SUB_DIRS+=("shared")
@@ -132,7 +138,6 @@ sync_dir() {
 
             if ! in_array "${FILE_CHECK}" "${SYNC_EXCLUDE[@]}"; then
 
-                # order of precedence root > windows > shared
                 if ! in_array "${FILE_CHECK}" "${CHECKED[@]}"; then
                     CHECKED+=("${FILE_CHECK}")
                     smart_link "${SRC}" "${SUB_DIR}" "${DEST}" "${BACKUP}" "${FILE}"

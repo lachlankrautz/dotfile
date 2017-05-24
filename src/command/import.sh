@@ -27,8 +27,8 @@ command_import() {
     else
         import_dotfiles_pattern "${FILE}" "${SUB_DIR}"
     fi
-    local SUCCESS=${?}
-    return ${SUCCESS}
+    local SUCCESS="${?}"
+    return "${SUCCESS}"
 }
 
 list_available() {
@@ -36,15 +36,15 @@ list_available() {
 
     # TODO must loop groups
     local DIR="${DOTFILES_DIR}/shared"
-    local DOTFILES=$(listdir "${DIR}")
-    DOTFILES="${DOTFILES[@]//${DIR}\//}"
+    local DOTFILES=($(listdir "${DIR}"))
+    DOTFILES=("${DOTFILES[@]//${DIR}\//}")
 
-    local HOME_FILES=$(listdir "${home_dir}")
-    HOME_FILES="${HOME_FILES[@]//${home_dir}\//}"
+    local HOME_FILES=($(listdir "${home_dir}"))
+    HOME_FILES=("${HOME_FILES[@]//${home_dir}\//}")
 
     local HOME_FILE
-    for HOME_FILE in ${HOME_FILES}; do
-        if ! in_array "${HOME_FILE}" ${DOTFILES}; then
+    for HOME_FILE in "${HOME_FILES[@]}"; do
+        if ! in_array "${HOME_FILE}" "${DOTFILES[@]}"; then
             echo "    ${HOME_FILE}"
         fi
     done

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 load_lib() {
-    local PATH_TMP=$(pwd)
-    local LIB_DIR=${PATH_BASE}/lib/${1%/*}
-    local LIB_FILE=${1##*/}
+    local PATH_TMP="$(pwd)"
+    local LIB_DIR="${PATH_BASE}/lib/${1%/*}"
+    local LIB_FILE="${1##*/}"
 
-    cd ${LIB_DIR}
-    source ${LIB_FILE}
-    cd ${PATH_TMP}
+    cd "${LIB_DIR}"
+    source "${LIB_FILE}"
+    cd "${PATH_TMP}"
 }
 
 load_lib "bashful/bin/bashful"

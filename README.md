@@ -4,10 +4,10 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 
 # Features
 - Sync dotfiles to home dir and /root home dir (optional)
-- Uses "mklink [/D]" on windows or "ln -s" on linux
+- Uses "mklink [/D]" on Windows or "ln -s" on Linux
 - Automatically creates backups of existing files before replacing with links
 - Import file (pattern) from home into git repo
-- Share files across platforms or override specific files using groups (shared/windows/root)
+- Share files across platforms or override specific files using groups (shared/windows/linux/root)
 - Display status of all linked files
 - Clone git config repo (optional)
 

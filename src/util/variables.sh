@@ -61,10 +61,14 @@ EOF
     SYNC_EXCLUDE=(.git .gitignore)
 
     # get current dotfile dir
-    DOTFILES_DIR="${dotfiles_git##*:}"
-    DOTFILES_DIR="${DOTFILES_DIR##*/}"
-    DOTFILES_DIR="${dotfiles_home}/${DOTFILES_DIR%.git}"
+    DOTFILES_PROJECT_NAME="${dotfiles_git##*:}"
+    DOTFILES_PROJECT_NAME="${DOTFILES_PROJECT_NAME##*/}"
+    DOTFILES_PROJECT_NAME="${DOTFILES_PROJECT_NAME%.git}"
+
+    DOTFILES_DIR="${dotfiles_home}/${DOTFILES_PROJECT_NAME}"
     DOTFILES_DIR_SHARED="${DOTFILES_DIR}/shared"
+    DOTFILES_DIR_WINDOWS="${DOTFILES_DIR}/windows"
+    DOTFILES_DIR_ROOT="${DOTFILES_DIR}/root"
 }
 
 load_variables

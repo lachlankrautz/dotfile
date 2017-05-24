@@ -14,13 +14,18 @@ EOF
 }
 
 command_import() {
+    local FILE="${1}"
+    local SUB_DIR="${2}"
+    if [ -z "${SUB_DIR}" ]; then
+        SUB_DIR="shared"
+    fi
+
     title_import
 
-    local FILE="${1}"
     if [ -z "${FILE}" ]; then
         list_available
     else
-        import_dotfiles_pattern "${FILE}"
+        import_dotfiles_pattern "${FILE}" "${SUB_DIR}"
     fi
     local SUCCESS=${?}
     return ${SUCCESS}
@@ -47,14 +52,26 @@ list_available() {
 
 import_dotfiles_pattern() {
     local PATTERN="${1}"
+    local SUB_DIR="${2}"
     WRITABLE=1
 
-    info "Importing ${PATTERN}"
-    local DOTFILES=$(find "${home_dir}" -maxdepth 1 -mindepth 1 -name "${PATTERN}")
+    info "Importing ${PATTERN} into ${DOTFILES_PROJECT_NAME}"
+    local DOTFILES=($(find "${home_dir}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
+    if [ "${#DOTFILES[@]}" -eq 0 ]; then
+        error "No files matching pattern: ${PATTERN}"
+        echo
+        return 1
+    fi
+    if [ ! -d "${DOTFILES_DIR}/${SUB_DIR}" ]; then
+        error "Dotfile group not found: ${SUB_DIR}"
+        echo
+        return 1
+    fi
+
     DOTFILES="${DOTFILES[@]//${home_dir}\//}"
     local DOTFILE
-    for DOTFILE in ${DOTFILES}; do
-        import_dotfile "${DOTFILE}"
+    for DOTFILE in "${DOTFILES[@]}"; do
+        import_dotfile "${DOTFILE}" "${SUB_DIR}"
     done
 
     echo
@@ -62,8 +79,10 @@ import_dotfiles_pattern() {
 
 import_dotfile() {
     local FILE="${1}"
+    local SUB_DIR="${2}"
+
     local HOME_PATH="${home_dir}/${FILE##*/}"
-    local DOTFILE_PATH="${DOTFILES_DIR_SHARED}/${FILE##*/}"
+    local DOTFILE_PATH="${DOTFILES_DIR}/${SUB_DIR}/${FILE##*/}"
 
     if [ ! -e "${HOME_PATH}" ]; then
         echo_status "${term_fg_red}" " Import missing" "${HOME_PATH}"
@@ -80,7 +99,7 @@ import_dotfile() {
 
     if mv "${HOME_PATH}" "${DOTFILE_PATH}"; then
         echo_status "${term_fg_green}" "       Imported" "${HOME_PATH}"
-        smart_link "${DOTFILES_DIR_SHARED}" "${home_dir}" "${backup_dir}" "${FILE}"
+        smart_link "${DOTFILES_DIR}" "${SUB_DIR}" "${home_dir}" "${backup_dir}" "${FILE}"
         return 0
     else
         echo_status "${term_fg_red}" "  Import failed" "${HOME_PATH}"

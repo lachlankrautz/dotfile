@@ -27,62 +27,77 @@ echo_win_path() {
 }
 
 smart_link() {
-    local SRC=${1%/}
-    local DEST=${2%/}
-    local BACKUP=${3%/}
-    local ITEM=${4##*/}
+    # function params
+    local SRC="${1%/}"
+    local SUB_DIR="${2%/}"
+    local DEST="${3%/}"
+    local BACKUP="${4%/}"
+    local ITEM="${5##*/}"
 
-    if [ -L "${DEST}/${ITEM}" ]; then
-        echo_status ${term_fg_green} "         Linked" ${ITEM}
+    local SRC_ITEM="${SRC}/${SUB_DIR}"
+    SRC_ITEM="${SRC_ITEM%/}/${ITEM}"
+    local DEST_ITEM="${DEST}/${ITEM}"
+    local ITEM_STATUS="${ITEM}"
+
+    if [ ! -z "${SUB_DIR}" ] && [ ! "${SUB_DIR}" = "shared" ]; then
+        ITEM_STATUS="${ITEM_STATUS} (${SUB_DIR})"
+    fi
+
+    if [ -L "${DEST_ITEM}" ]; then
+        echo_status ${term_fg_green} "         Linked" "${ITEM_STATUS}"
         return 0
 
-    elif [ -e "${DEST}/${ITEM}" ]; then
+    elif [ -e "${DEST_ITEM}" ]; then
 
         if ! truth ${WRITABLE}; then
             local BACKUP_COLOUR=${term_fg_yellow}
             if [ ! -d "${BACKUP}" ]; then
                 BACKUP_COLOUR=${term_fg_red}
             fi
-            echo_status ${BACKUP_COLOUR} "    Backup+Link" "${ITEM}"
+            echo_status ${BACKUP_COLOUR} "    Backup+Link" "${ITEM_STATUS}"
             return 0
         fi
 
         if [ ! -d "${BACKUP}" ]; then
-            echo_status "${term_fg_yellow}" "      No Backup" "${ITEM}"
+            echo_status "${term_fg_yellow}" "      No Backup" "${ITEM_STATUS}"
             return 1
         fi
         backup_move "${DEST}" "${BACKUP}" "${ITEM}" || return 1
     fi
 
-    if [ ! -d "${DEST}" ]; then
-        echo_status "${term_fg_red}" "       Link Failed" ${ITEM}
-        return 1
-    fi
     if ! truth ${WRITABLE}; then
-        echo_status "${term_fg_white}" "           Link" ${ITEM}
+        local COLOUR="${term_fg_white}"
+        if [ ! -d "${DEST}" ]; then
+            COLOUR="${term_fg_red}"
+        fi
+        echo_status "${COLOUR}" "           Link" "${ITEM_STATUS}"
         return 0
+    fi
+    if [ ! -d "${DEST}" ]; then
+        echo_status "${term_fg_red}" "    Link Failed" "${ITEM_STATUS}"
+        return 1
     fi
 
     if [ ${WINDOWS} -eq 1 ]; then
-        [ -d "${SRC}/${ITEM}" ] && OPT="/D " || OPT=""
+        [ -d "${SRC_ITEM}" ] && OPT="/D " || OPT=""
 
-        local WIN_SRC=$(echo_win_path ${SRC})
-        local WIN_DEST=$(echo_win_path ${DEST})
-        local CMD_C="mklink ${OPT}${WIN_DEST}\\${ITEM} ${WIN_SRC}\\${ITEM}"
+        local WIN_SRC_ITEM=$(echo_win_path ${SRC_ITEM})
+        local WIN_DEST_ITEM=$(echo_win_path ${DEST_ITEM})
+        local CMD_C="mklink ${OPT}${WIN_DEST_ITEM} ${WIN_SRC_ITEM}"
 
         # windows link attempt
         cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
     else
         # unix link attempt
-        ln -s "${SRC}/${ITEM}" "${DEST}/${ITEM}" > /dev/null 2>&1
+        ln -s "${SRC_ITEM}" "${DEST_ITEM}" > /dev/null 2>&1
     fi
 
     # must be next command after the link attempt to catch the process result
     if [ $? -eq 0 ]; then
-        echo_status ${term_fg_green} "   Link Created" ${ITEM}
+        echo_status ${term_fg_green} "   Link Created" "${ITEM_STATUS}"
         return 0
     else
-        echo_status ${term_fg_red} "    Link failed" ${ITEM}
+        echo_status ${term_fg_red} "    Link failed" "${ITEM_STATUS}"
         return 1
     fi
 }

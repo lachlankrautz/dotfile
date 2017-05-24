@@ -71,9 +71,26 @@ sync_dir() {
     local SRC="${1}"
     local DEST="${2}"
     local BACKUP="${3}"
+
     [ -d "${SRC}" ] || return 1
 
     heading "Sync ${DEST}"
+
+    local SUB_DIRS=()
+
+    # Build ordered sources list
+    if [ "${DEST}" = "/root" ] && [ -d "${SRC}/root" ]; then
+        SUB_DIRS+=("root")
+    fi
+    if truth ${WINDOWS} && [ -d "${SRC}/windows" ]; then
+        SUB_DIRS+=("windows")
+    fi
+    if [ -d "${SRC}/shared" ]; then
+        SUB_DIRS+=("shared")
+    fi
+    if [ "${#SUB_DIRS[@]}" = 0 ]; then
+        SUB_DIRS+=("")
+    fi
 
     info "Dir summary"
     dir_status "       Dotfiles" "${SRC}"
@@ -82,14 +99,26 @@ sync_dir() {
 
     info "File summary"
     local FILE
-    for FILE in $(listdir "${SRC}/shared"); do
+    local CHECKED=()
+    for SUB_DIR in "${SUB_DIRS[@]}"; do
 
-        FILE=$(echo ${FILE##*/} | lower)
-        if ! in_array "${FILE}" "${SYNC_EXCLUDE[@]}"; then
-            smart_link "${SRC}/shared" "${DEST}" "${BACKUP}" "${FILE}"
-        else
-            echo "        Ignored: ${FILE}"
-        fi
+        for FILE in $(listdir "${SRC}/${SUB_DIR}"); do
+
+            FILE=$(echo ${FILE##*/} | lower)
+
+            if ! in_array "${FILE}" "${SYNC_EXCLUDE[@]}"; then
+
+                # order of precedence root > windows > shared
+                if ! in_array "${FILE}" "${CHECKED[@]}"; then
+                    CHECKED+=("${FILE}")
+                    smart_link "${SRC}" "${SUB_DIR}" "${DEST}" "${BACKUP}" "${FILE}"
+                fi
+            else
+                echo "        Ignored: ${FILE}"
+            fi
+        done
     done
+
     echo
+    return 0
 }

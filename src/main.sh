@@ -14,13 +14,13 @@ ${term_fg_yellow}Usage:${term_reset}
   dotfile [options] [command] [args]
 
 ${term_fg_yellow}Options:${term_reset}
-  ${term_fg_green}-h, --help${term_reset}        Display usage
-  ${term_fg_green}-v, --version${term_reset}     Display version
+  ${term_fg_green}-h, --help${term_reset}                   Display usage
+  ${term_fg_green}-v, --version${term_reset}                Display version
 
 ${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}              Sync dotfiles to home dir
-  ${term_fg_green}status${term_reset}            Show status of dotfile links to home dir
-  ${term_fg_green}import${term_reset} [pattern]  Import dotfile from home back into repo and link
+  ${term_fg_green}sync${term_reset}                         Sync repo groups to home
+  ${term_fg_green}status${term_reset}                       Demo sync without making changes
+  ${term_fg_green}import${term_reset} [<pattern>] [<group>] Import home to repo group (default "shared")
 
 EOF
 }

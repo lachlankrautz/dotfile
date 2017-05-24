@@ -30,6 +30,7 @@
 #   WIN_HOME
 #   OS
 #   WINDOWS
+#   LINUX
 #   HOMEDRIVE
 #   HOMEPATH
 #   BACKUP_DIR
@@ -41,6 +42,8 @@ load_global_variables() {
     VERSION=1.0
     HELP=0
     WRITABLE=0
+    local UNAME=$(uname)
+    [ "${UNAME}" = "Linux" ] && LINUX=1 || LINUX=0
     [[ ${OS} =~ .*indows.* ]] && WINDOWS=1 || WINDOWS=0
     UNIX_HOME=~
     WIN_HOME=

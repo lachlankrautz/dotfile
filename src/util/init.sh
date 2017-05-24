@@ -14,5 +14,6 @@ load_lib "bashful/bin/bashful"
 load_lib "workshop/lib/workshop/dispatch.sh"
 load_lib "bash-ini-parser/bash-ini-parser"
 
-source "${PATH_BASE}/src/util/variables.sh"
 source "${PATH_BASE}/src/util/functions.sh"
+source "${PATH_BASE}/src/util/variables.sh"
+load_global_variables

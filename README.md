@@ -63,3 +63,42 @@ Commands:
   status                       Demo sync without making changes
   import [<pattern>] [<group>] Import home to repo group (default "shared")
 ```
+
+# Example
+
+```
+$ dotfile status
+           __        __
+     _____/ /_____ _/ /___  _______
+    / ___/ __/ __ `/ __/ / / / ___/
+   (__  ) /_/ /_/ / /_/ /_/ (__  )
+  /____/\__/\__,_/\__/\__,_/____/
+
+:: Filesystem
+==> Confirmed home dir ~
+==> Confirmed config dir ~/config
+==> Confirmed backup dir ~/config/backup_home
+
+:: Config repo
+==> Confirmed config repo ~/config/my-config
+==> Confirmed group ~/config/my-config/shared
+==> Confirmed group ~/config/my-config/windows
+
+:: Sync ~
+==> Dir summary
+           Home: ~
+    Config repo: ~/config/my-config/(windows|shared)
+         Backup: ~/config/backup_home
+==> File summary
+         Linked: .bashrc (windows)
+         Linked: .bash_profile (windows)
+         Linked: .minttyrc (windows)
+         Linked: .aws
+         Linked: .dir_colors
+         Linked: .emacs.d
+         Linked: .gitconfig
+         Linked: .gitignore_global
+         Linked: .m2
+
+
+```

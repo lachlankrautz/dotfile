@@ -19,7 +19,7 @@ $ git clone git@github.com:lachlankrautz/dotfile
 ```
 - Add bin/dotfile to path (optional)
 ```
-$ ln -s $(pwd)/bin/dotfile /usr/local/bin
+$ ln -s $(pwd)/dotfile/bin/dotfile /usr/local/bin
 
 ```
 - Run "dotfile" to generate config file

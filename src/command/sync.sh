@@ -94,20 +94,11 @@ sync_dir() {
 
     heading "Sync ${DEST}"
 
-
-    # Build ordered sources list
     local SUB_DIRS=()
-    if [ "${DEST}" = "/root" ] && [ -d "${SRC}/root" ]; then
-        SUB_DIRS+=("root")
-    fi
-    if truth ${WINDOWS} && [ -d "${SRC}/windows" ]; then
-        SUB_DIRS+=("windows")
-    fi
-    if truth ${LINUX} && [ -d "${SRC}/linux" ]; then
-        SUB_DIRS+=("linux")
-    fi
-    if [ -d "${SRC}/shared" ]; then
-        SUB_DIRS+=("shared")
+    if [ "${DEST}" = "/root" ]; then
+        SUB_DIRS=("${GROUP_DIRS_ROOT[@]}")
+    else
+        SUB_DIRS=("${GROUP_DIRS[@]}")
     fi
     if [ "${#SUB_DIRS[@]}" = 0 ]; then
         return 1

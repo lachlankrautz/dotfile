@@ -37,9 +37,11 @@
 #   ROOT_BACKUP_DIR
 #   SYNC_EXCLUDE
 #   DOTFILES_DIR
+#   GROUP_DIRS
+#   GROUP_DIRS_ROOT
 
 load_global_variables() {
-    VERSION=1.0
+    VERSION="1.0"
     HELP=0
     WRITABLE=0
     local UNAME="$(uname)"
@@ -65,8 +67,25 @@ load_global_variables() {
 
     BACKUP_DIR="${config_dir}/backup_home"
     ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
-    SYNC_EXCLUDE=(.git .gitignore)
+    SYNC_EXCLUDE=(".git" ".gitignore")
     DOTFILES_DIR="${config_dir}/${repo}"
+
+    GROUP_DIRS=()
+    GROUP_DIRS_ROOT=()
+    if truth "${sync_to_root}" && [ -d "${DOTFILES_DIR}/root" ]; then
+        GROUP_DIRS_ROOT+=("root")
+    fi
+    if truth "${WINDOWS}" && [ -d "${DOTFILES_DIR}/windows" ]; then
+        GROUP_DIRS+=("windows")
+    fi
+    if truth "${LINUX}" && [ -d "${DOTFILES_DIR}/linux" ]; then
+        GROUP_DIRS+=("linux")
+        GROUP_DIRS_ROOT+=("linux")
+    fi
+    if [ -d "${DOTFILES_DIR}/shared" ]; then
+        GROUP_DIRS+=("shared")
+        GROUP_DIRS_ROOT+=("shared")
+    fi
 }
 
 ensure_config() {

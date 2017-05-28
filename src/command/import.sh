@@ -34,20 +34,40 @@ command_import() {
 list_available() {
     info "Available imports"
 
-    # TODO must loop groups
-    local DIR="${DOTFILES_DIR}/shared"
-    local DOTFILES=($(listdir "${DIR}"))
-    DOTFILES=("${DOTFILES[@]//${DIR}\//}")
-
     local HOME_FILES=($(listdir "${home_dir}"))
     HOME_FILES=("${HOME_FILES[@]//${home_dir}\//}")
+    local DOTFILES
+    local LISTED=()
 
+    local SUB_DIRS
+    if truth "${sync_to_root}"; then
+        SUB_DIRS=("${GROUP_DIRS_ROOT[@]}")
+    else
+        SUB_DIRS=("${GROUP_DIRS[@]}")
+    fi
+
+    local DIR
     local HOME_FILE
+    local FOUND
     for HOME_FILE in "${HOME_FILES[@]}"; do
-        if ! in_array "${HOME_FILE}" "${DOTFILES[@]}"; then
+
+        FOUND=0
+        for DIR in "${SUB_DIRS[@]}"; do
+            DOTFILES=($(listdir "${DOTFILES_DIR}/${DIR}"))
+            DOTFILES=("${DOTFILES[@]//${DIR}\//}")
+
+            if ! in_array "${HOME_FILE}" "${DOTFILES[@]}"; then
+                FOUND=1
+                break
+            fi
+        done
+
+        if  truth "${FOUND}" && ! in_array "${HOME_FILE}" "${LISTED[@]}"; then
+            LISTED+=("${HOME_FILE}")
             echo "    ${HOME_FILE}"
         fi
     done
+
     echo
     return 0
 }

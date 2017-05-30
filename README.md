@@ -23,20 +23,6 @@ $ ln -s $(pwd)/dotfile/bin/dotfile /usr/local/bin
 
 ```
 - Run "dotfile" to generate config file
-```
-$ dotfile
-                      _____
-    _________  ____  / __(_)___ _
-   / ___/ __ \/ __ \/ /_/ / __ `/
-  / /__/ /_/ / / / / __/ / /_/ /
-  \___/\____/_/ /_/_/ /_/\__, /
-                        /____/
-
-WARNING: Config incomplete - local
-==> Edit your local config file: ~/dev/bash/dotfile/config/local.ini
-==> Mark "local_config_loaded=1" when finished
-
-```
 - Set "git_repo" in config/local.ini (optional)
 - Set "local_config_loaded=1" to confirm current config
 - Run "dotfile status" to see what repo files will get linked on sync
@@ -75,7 +61,6 @@ $ dotfile status
   /____/\__/\__,_/\__/\__,_/____/
 
 :: Filesystem
-==> Confirmed home dir ~
 ==> Confirmed config dir ~/config
 ==> Confirmed backup dir ~/config/backup_home
 

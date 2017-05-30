@@ -16,4 +16,6 @@ load_lib "bash-ini-parser/bash-ini-parser"
 
 source "${PATH_BASE}/src/util/functions.sh"
 source "${PATH_BASE}/src/util/variables.sh"
+source "${PATH_BASE}/src/command/import.sh"
+source "${PATH_BASE}/src/command/sync.sh"
 load_global_variables

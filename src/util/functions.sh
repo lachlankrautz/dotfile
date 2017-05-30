@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+sudo_command() {
+    local SUDO_COMMAND="$@"
+    sudo -s << EOF
+PATH_BASE="${PATH_BASE}"
+TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
+WRITABLE="${WRITABLE}"
+source "${PATH_BASE}/src/util/init.sh"
+${SUDO_COMMAND}
+EOF
+}
+
+ensure_not_root() {
+    if truth "${IS_ROOT}"; then
+        main_title
+        error "Must not run as root"
+        echo
+        exit 1
+    fi
+}
+
 ensure_dir() {
     local DIR="${1}"
     local NAME="${2}"
@@ -110,10 +130,11 @@ doc_title() {
 }
 
 dir_status() {
-    local COLOUR
     local TITLE="${1}"
     local DIR="${2}"
     local EXTRA="${3}"
+
+    local COLOUR=""
     if [ -z "${DIR}" ]; then
         COLOUR="${term_fg_yellow}"
         DIR="not set"
@@ -134,20 +155,20 @@ echo_status() {
     local COLOUR="${1}"
     local TITLE="${2}"
     local MESSAGE="${3}"
-    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE//$HOME/\~}${term_reset}"
+    if truth "${IS_ROOT}"; then
+        MESSAGE="${MESSAGE//$TRUE_HOME_DIR/\~}"
+    else
+        MESSAGE="${MESSAGE//$HOME/\~}"
+    fi
+    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
 }
 
 heading() {
     local MESSAGE="${1}"
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//$HOME/\~}${term_reset}"
-}
-
-run_command() {
-    local COMMAND="${1}"; shift
-    local PATH_COMMAND="${PATH_BASE}/src/command/${COMMAND}.sh"
-    [ -f "${PATH_COMMAND}" ] || die "Command not found ${PATH_COMMAND}"
-    source "${PATH_COMMAND}"
-    command_${COMMAND} "$@"
+    if [ ! "${HOME}" = "/root" ]; then
+        MESSAGE="${MESSAGE//$HOME/\~}"
+    fi
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE}${term_reset}"
 }
 
 backup_move() {
@@ -165,4 +186,15 @@ backup_move() {
         echo_status "${term_fg_red}" "  Backup Failed" "${FILE}"
     fi
     return "${SUCCESS}"
+}
+
+main_title() {
+    doc_title << 'EOF'
+         __      __  _____ __
+    ____/ /___  / /_/ __(_) /__
+   / __  / __ \/ __/ /_/ / / _ \
+  / /_/ / /_/ / /_/ __/ / /  __/
+  \__,_/\____/\__/_/ /_/_/\___/
+
+EOF
 }

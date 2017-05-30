@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
 
 usage() {
-    doc_title << 'EOF'
-         __      __  _____ __
-    ____/ /___  / /_/ __(_) /__
-   / __  / __ \/ __/ /_/ / / _ \
-  / /_/ / /_/ / /_/ __/ / /  __/
-  \__,_/\____/\__/_/ /_/_/\___/
-
-EOF
+    main_title
     cat << EOF
 ${term_fg_yellow}Usage:${term_reset}
   dotfile [options] [command] [args]
@@ -42,21 +35,21 @@ dotfile_option_help() {
 dotfile_command_sync() {
     if [ ${HELP} = 0 ]; then
         WRITABLE=1
-        run_command "sync"
+        command_sync
     else
         dispatch dotfile "$@"
     fi
 }
 dotfile_command_status() {
     if [ ${HELP} = 0 ]; then
-        run_command "sync"
+        command_sync
     else
         dispatch dotfile "$@"
     fi
 }
 dotfile_command_import() {
     if [ ${HELP} = 0 ]; then
-        run_command "import" "$@"
+        command_import "$@"
     else
         dispatch dotfile "$@"
     fi
@@ -69,4 +62,5 @@ dotfile_call_() {
 dotfile_() {
     usage
 }
+ensure_not_root
 dispatch dotfile "$@"

@@ -27,17 +27,18 @@ command_sync() {
 
     ensure_filesystem
     ensure_dotfiles
-    sync_dir "${DOTFILES_DIR}" "${home_dir}" "${BACKUP_DIR}"
-    truth "${sync_to_root}" && sync_dir "${DOTFILES_DIR}" "/root" "${ROOT_BACKUP_DIR}"
+    sync_home "${BACKUP_DIR}"
+    if truth "${sync_root}"; then
+        sudo_command sync_home "${ROOT_BACKUP_DIR}"
+    fi
 }
 
 ensure_filesystem() {
     heading "Filesystem"
 
-    ensure_dir "${home_dir}" "home dir"
     ensure_dir "${config_dir}" "config dir"
     ensure_dir "${BACKUP_DIR}" "backup dir"
-    truth "${sync_to_root}" && ensure_dir "${ROOT_BACKUP_DIR}" "Root backup dir"
+    truth "${sync_root}" && ensure_dir "${ROOT_BACKUP_DIR}" "root backup dir"
     echo
 }
 
@@ -59,7 +60,7 @@ ensure_dotfiles() {
         return 1
     fi
     ensure_dir "${DOTFILES_DIR}/shared" "group" || SUCCESS=1
-    if truth "${sync_to_root}"; then
+    if truth "${sync_root}"; then
         ensure_dir "${DOTFILES_DIR}/root" "group" || SUCCESS=1
     fi
     if truth "${WINDOWS}"; then
@@ -85,44 +86,47 @@ clone_repo() {
     return "${SUCCESS}"
 }
 
-sync_dir() {
-    local SRC="${1}"
-    local DEST="${2}"
-    local BACKUP="${3}"
+sync_home() {
+    local BACKUP="${1}"
 
-    [ -d "${SRC}" ] || return 1
+    [ -d "${DOTFILES_DIR}" ] || return 1
 
-    heading "Sync ${DEST}"
-
-    local SUB_DIRS=()
-    if [ "${DEST}" = "/root" ]; then
-        SUB_DIRS=("${GROUP_DIRS_ROOT[@]}")
-    else
-        SUB_DIRS=("${GROUP_DIRS[@]}")
+    local HEADING="Status"
+    if truth "${WRITABLE}"; then
+        HEADING="Sync"
     fi
-    if [ "${#SUB_DIRS[@]}" = 0 ]; then
+    local DEST="${HOME_DIR}"
+    if truth "${IS_ROOT}"; then
+        DEST="/root"
+    fi
+
+    heading "${HEADING} ${DEST}"
+
+    if [ "${#GROUP_DIRS[@]}" = 0 ]; then
+        echo "No repo groups available"
         return 1
     fi
 
     local GROUPS_MESSAGE
-    if [ "${#SUB_DIRS[@]}" = 1 ]; then
-        GROUPS_MESSAGE="${SUB_DIRS}"
+    if [ "${#GROUP_DIRS[@]}" = 1 ]; then
+        GROUPS_MESSAGE="${GROUP_DIRS}"
     else
-        GROUPS_MESSAGE="($(implode "|" "${SUB_DIRS[@]}"))"
+        GROUPS_MESSAGE="($(implode "|" "${GROUP_DIRS[@]}"))"
     fi
 
     info "Dir summary"
     dir_status "           Home" "${DEST}"
-    dir_status "    Config repo" "${SRC}" "/${GROUPS_MESSAGE}"
+    dir_status "    Config repo" "${DOTFILES_DIR}" "/${GROUPS_MESSAGE}"
     dir_status "         Backup" "${BACKUP}"
 
     info "File summary"
+    local GROUP_DIR
     local FILE
     local FILE_CHECK
     local CHECKED=()
-    for SUB_DIR in "${SUB_DIRS[@]}"; do
+    for GROUP_DIR in "${GROUP_DIRS[@]}"; do
 
-        for FILE in $(listdir "${SRC}/${SUB_DIR}"); do
+        for FILE in $(listdir "${DOTFILES_DIR}/${GROUP_DIR}"); do
 
             FILE="${FILE##*/}"
             FILE_CHECK=$(echo "${FILE}" | lower)
@@ -131,7 +135,7 @@ sync_dir() {
 
                 if ! in_array "${FILE_CHECK}" "${CHECKED[@]}"; then
                     CHECKED+=("${FILE_CHECK}")
-                    smart_link "${SRC}" "${SUB_DIR}" "${DEST}" "${BACKUP}" "${FILE}"
+                    smart_link "${DOTFILES_DIR}" "${GROUP_DIR}" "${DEST}" "${BACKUP}" "${FILE}"
                 fi
             else
                 echo "        Ignored: ${FILE}"

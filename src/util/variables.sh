@@ -13,13 +13,10 @@
 #   term_reset
 #
 # From config:
-#   local_config_loaded
-#   local_config_loaded
 #   config_dir
 #   repo
 #   git_repo
-#   home_dir
-#   sync_to_root
+#   sync_root
 #
 # From system:
 #   PATH_BASE
@@ -31,6 +28,8 @@
 #   OS
 #   WINDOWS
 #   LINUX
+#   HOME_DIR
+#   IS_ROOT
 #   HOMEDRIVE
 #   HOMEPATH
 #   BACKUP_DIR
@@ -38,12 +37,13 @@
 #   SYNC_EXCLUDE
 #   DOTFILES_DIR
 #   GROUP_DIRS
-#   GROUP_DIRS_ROOT
 
 load_global_variables() {
     VERSION="1.0"
     HELP=0
-    WRITABLE=0
+    if ! truth "${WRITABLE}";  then
+        WRITABLE=0
+    fi
     local UNAME="$(uname)"
     [ "${UNAME}" = "Linux" ] && LINUX=1 || LINUX=0
     [[ "${OS}" =~ .*indows.* ]] && WINDOWS=1 || WINDOWS=0
@@ -52,18 +52,22 @@ load_global_variables() {
     if [ ${WINDOWS} -eq 1 ] && [ -n "${HOMEDRIVE}" ] && [ -n "${HOMEPATH}" ]; then
         WIN_HOME=$(echo "${HOMEDRIVE}${HOMEPATH}" | sed 's|\\|/|g')
     fi
+    HOME_DIR="$(abspath "~")"
+    IS_ROOT=0
+    if truth "${LINUX}" && [ "${EUID}" -eq 0 ]; then
+       IS_ROOT=1
+       HOME_DIR="/root"
+    fi
 
     local BAD_CONFIGS=()
-    ensure_config "default" "Default config - in version control" || BAD_CONFIGS+=("default")
-    ensure_config "local" "Local config - not in version control" || BAD_CONFIGS+=("local")
-
-    if [ ! "${#BAD_CONFIGS[@]}" -eq 0 ]; then
-        missing_config "${BAD_CONFIGS[@]}"
-    fi
+    ensure_config "default" "Default config - in version control"
+    ensure_config "local" "Local config - not in version control"
 
     # trailing slashes not welcome
     config_dir="${config_dir%/}"
-    home_dir="${home_dir%/}"
+    if [ ! -z "${TRUE_HOME_DIR}" ]; then
+        config_dir="${config_dir/~/${TRUE_HOME_DIR}}"
+    fi
 
     BACKUP_DIR="${config_dir}/backup_home"
     ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
@@ -71,20 +75,17 @@ load_global_variables() {
     DOTFILES_DIR="${config_dir}/${repo}"
 
     GROUP_DIRS=()
-    GROUP_DIRS_ROOT=()
-    if truth "${sync_to_root}" && [ -d "${DOTFILES_DIR}/root" ]; then
-        GROUP_DIRS_ROOT+=("root")
+    if truth "${IS_ROOT}" && [ -d "${DOTFILES_DIR}/root" ]; then
+        GROUP_DIRS+=("root")
     fi
     if truth "${WINDOWS}" && [ -d "${DOTFILES_DIR}/windows" ]; then
         GROUP_DIRS+=("windows")
     fi
     if truth "${LINUX}" && [ -d "${DOTFILES_DIR}/linux" ]; then
         GROUP_DIRS+=("linux")
-        GROUP_DIRS_ROOT+=("linux")
     fi
     if [ -d "${DOTFILES_DIR}/shared" ]; then
         GROUP_DIRS+=("shared")
-        GROUP_DIRS_ROOT+=("shared")
     fi
 }
 
@@ -100,29 +101,7 @@ ensure_config() {
     cfg_parser "${FILE}"
     cfg_section_general
 
-    local SAFETY="${TYPE}_config_loaded"
-    if ! truth "${!SAFETY}"; then
-        return 1
-    fi
     return 0
-}
-
-missing_config() {
-    local TYPES=("${@}")
-
-    config_title
-
-    local TYPE
-    local FILE
-    for TYPE in "${TYPES[@]}"; do
-        FILE="${PATH_BASE}/config/${TYPE}.ini"
-
-        warn "Config incomplete - ${TYPE}"
-        info "Edit your ${TYPE} config file: ${FILE}"
-        info "Mark \"${TYPE}_config_loaded=1\" when finished"
-        echo
-    done
-    exit
 }
 
 create_config() {
@@ -135,12 +114,6 @@ create_config() {
 
 [general]
 
-;;; safety to ensure config has been confirmed
-${TYPE}_config_loaded=0
-
-;;; home dir to sync to
-home_dir=~/
-
 ;;; dir for config repo(s) and backups
 config_dir=~/config
 
@@ -151,18 +124,6 @@ repo=my-config
 git_repo=
 
 ;;; also sync dotfiles to /root
-sync_to_root=0
-EOF
-}
-
-config_title() {
-    doc_title << 'EOF'
-                      _____
-    _________  ____  / __(_)___ _
-   / ___/ __ \/ __ \/ /_/ / __ `/
-  / /__/ /_/ / / / / __/ / /_/ /
-  \___/\____/_/ /_/_/ /_/\__, /
-                        /____/
-
+sync_root=0
 EOF
 }

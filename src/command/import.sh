@@ -34,25 +34,18 @@ command_import() {
 list_available() {
     info "Available imports"
 
-    local HOME_FILES=($(listdir "${home_dir}"))
-    HOME_FILES=("${HOME_FILES[@]//${home_dir}\//}")
-    local DOTFILES
+    local HOME_FILES=($(listdir "${HOME_DIR}"))
+    HOME_FILES=("${HOME_FILES[@]//${HOME_DIR}\//}")
+    local DOTFILES=()
     local LISTED=()
 
-    local SUB_DIRS
-    if truth "${sync_to_root}"; then
-        SUB_DIRS=("${GROUP_DIRS_ROOT[@]}")
-    else
-        SUB_DIRS=("${GROUP_DIRS[@]}")
-    fi
-
-    local DIR
     local HOME_FILE
+    local DIR
     local FOUND
     for HOME_FILE in "${HOME_FILES[@]}"; do
 
         FOUND=0
-        for DIR in "${SUB_DIRS[@]}"; do
+        for DIR in "${GROUP_DIRS[@]}"; do
             DOTFILES=($(listdir "${DOTFILES_DIR}/${DIR}"))
             DOTFILES=("${DOTFILES[@]//${DIR}\//}")
 
@@ -78,7 +71,7 @@ import_dotfiles_pattern() {
     WRITABLE=1
 
     info "Importing ${PATTERN} into ${repo}"
-    local DOTFILES=($(find "${home_dir}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
+    local DOTFILES=($(find "${HOME_DIR}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
     if [ "${#DOTFILES[@]}" -eq 0 ]; then
         error "No files matching pattern: ${PATTERN}"
         echo
@@ -90,7 +83,7 @@ import_dotfiles_pattern() {
         return 1
     fi
 
-    DOTFILES=("${DOTFILES[@]//${home_dir}\//}")
+    DOTFILES=("${DOTFILES[@]//${HOME_DIR}\//}")
     local DOTFILE
     for DOTFILE in "${DOTFILES[@]}"; do
         import_dotfile "${DOTFILE}" "${SUB_DIR}"
@@ -103,7 +96,7 @@ import_dotfile() {
     local FILE="${1}"
     local SUB_DIR="${2}"
 
-    local HOME_PATH="${home_dir}/${FILE##*/}"
+    local HOME_PATH="${HOME_DIR}/${FILE##*/}"
     local DOTFILE_PATH="${DOTFILES_DIR}/${SUB_DIR}/${FILE##*/}"
 
     if [ ! -e "${HOME_PATH}" ]; then
@@ -121,7 +114,7 @@ import_dotfile() {
 
     if mv "${HOME_PATH}" "${DOTFILE_PATH}"; then
         echo_status "${term_fg_green}" "       Imported" "${HOME_PATH}"
-        smart_link "${DOTFILES_DIR}" "${SUB_DIR}" "${home_dir}" "${BACKUP_DIR}" "${FILE}"
+        smart_link "${DOTFILES_DIR}" "${SUB_DIR}" "${HOME_DIR}" "${BACKUP_DIR}" "${FILE}"
         return 0
     else
         echo_status "${term_fg_red}" "  Import failed" "${HOME_PATH}"

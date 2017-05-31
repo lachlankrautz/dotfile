@@ -37,6 +37,7 @@
 #   SYNC_EXCLUDE
 #   DOTFILES_DIR
 #   GROUP_DIRS
+#   TRUE_HOME_DIR
 
 load_global_variables() {
     VERSION="1.0"

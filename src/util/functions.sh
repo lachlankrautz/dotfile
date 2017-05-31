@@ -73,15 +73,14 @@ smart_link() {
             if [ ! -d "${BACKUP}" ]; then
                 BACKUP_COLOUR="${term_fg_red}"
             fi
-            echo_status "${BACKUP_COLOUR}" "    Backup+Link" "${ITEM_STATUS}"
-            return 0
+            echo_status "${BACKUP_COLOUR}" "Backup Required" "${ITEM_STATUS}"
+        else
+            if [ ! -d "${BACKUP}" ]; then
+                echo_status "${term_fg_yellow}" "      No Backup" "${ITEM_STATUS}"
+                return 1
+            fi
+            backup_move "${DEST}" "${BACKUP}" "${ITEM}" || return 1
         fi
-
-        if [ ! -d "${BACKUP}" ]; then
-            echo_status "${term_fg_yellow}" "      No Backup" "${ITEM_STATUS}"
-            return 1
-        fi
-        backup_move "${DEST}" "${BACKUP}" "${ITEM}" || return 1
     fi
 
     if ! truth "${WRITABLE}"; then
@@ -89,7 +88,7 @@ smart_link() {
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_red}"
         fi
-        echo_status "${COLOUR}" "           Link" "${ITEM_STATUS}"
+        echo_status "${COLOUR}" "  Link Required" "${ITEM_STATUS}"
         return 0
     fi
     if [ ! -d "${DEST}" ]; then

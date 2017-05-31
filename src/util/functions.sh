@@ -42,7 +42,7 @@ ensure_dir() {
     return "${SUCCESS}"
 }
 
-echo_win_path() {
+win_path() {
     echo $(echo ${1} | sed "s|^${UNIX_HOME}|${WIN_HOME}|g" | sed 's|/|\\|g')
 }
 
@@ -99,8 +99,8 @@ smart_link() {
     if [ "${WINDOWS}" -eq 1 ]; then
         [ -d "${SRC_ITEM}" ] && OPT="/D " || OPT=""
 
-        local WIN_SRC_ITEM=$(echo_win_path "${SRC_ITEM}")
-        local WIN_DEST_ITEM=$(echo_win_path "${DEST_ITEM}")
+        local WIN_SRC_ITEM="$(win_path "${SRC_ITEM}")"
+        local WIN_DEST_ITEM="$(win_path "${DEST_ITEM}")"
         local CMD_C="mklink ${OPT}${WIN_DEST_ITEM} ${WIN_SRC_ITEM}"
 
         # Windows link attempt

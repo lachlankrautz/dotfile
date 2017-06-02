@@ -165,7 +165,7 @@ echo_status() {
 heading() {
     local MESSAGE="${1}"
     if [ ! "${HOME}" = "/root" ]; then
-        MESSAGE="${MESSAGE//$HOME/\~}"
+        MESSAGE="${MESSAGE//$HOME/~}"
     fi
     echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE}${term_reset}"
 }

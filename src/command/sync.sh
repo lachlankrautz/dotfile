@@ -69,6 +69,8 @@ ensure_dotfiles() {
     if truth "${LINUX}"; then
         ensure_dir "${DOTFILES_DIR}/linux" "group" || SUCCESS=1
     fi
+    update_group_dirs
+
     echo
     return "${SUCCESS}"
 }

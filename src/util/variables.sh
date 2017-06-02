@@ -74,7 +74,10 @@ load_global_variables() {
     ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
     SYNC_EXCLUDE=(".git" ".gitignore")
     DOTFILES_DIR="${config_dir}/${repo}"
+    update_group_dirs
+}
 
+update_group_dirs() {
     GROUP_DIRS=()
     if truth "${IS_ROOT}" && [ -d "${DOTFILES_DIR}/root" ]; then
         GROUP_DIRS+=("root")

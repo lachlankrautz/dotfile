@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
 sudo_command() {
-    local SUDO_COMMAND="$@"
+    local SUDO_COMMAND="${1}"; shift;
+    echo "comm: ${SUDO_COMMAND} ${@}"
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
 TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
 WRITABLE="${WRITABLE}"
 source "${PATH_BASE}/src/util/init.sh"
-${SUDO_COMMAND}
+${SUDO_COMMAND} "${@}"
 EOF
 }
 
@@ -25,7 +26,7 @@ ensure_dir() {
     local NAME="${2}"
     local MESSAGE="${NAME} ${DIR}"
     if [ -z "${DIR}" ]; then
-        warn "${NAME} not set"
+        warn "${NAME} path not set"
         return 1
     fi
     if [ -d "${DIR}" ]; then
@@ -136,7 +137,7 @@ dir_status() {
     local COLOUR=""
     if [ -z "${DIR}" ]; then
         COLOUR="${term_fg_yellow}"
-        DIR="not set"
+        DIR="path not set"
     elif [ -d "${DIR}" ]; then
         COLOUR="${term_fg_green}"
     else

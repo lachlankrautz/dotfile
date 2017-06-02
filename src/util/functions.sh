@@ -2,7 +2,6 @@
 
 sudo_command() {
     local SUDO_COMMAND="${1}"; shift;
-    echo "comm: ${SUDO_COMMAND} ${@}"
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
 TRUE_HOME_DIR="$(abspath ${HOME_DIR})"

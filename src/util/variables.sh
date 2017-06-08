@@ -36,7 +36,7 @@
 #   ROOT_BACKUP_DIR
 #   SYNC_EXCLUDE
 #   DOTFILES_DIR
-#   GROUP_DIRS
+#   DOTFILE_GROUPS
 #   TRUE_HOME_DIR
 
 load_global_variables() {
@@ -74,22 +74,23 @@ load_global_variables() {
     ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
     SYNC_EXCLUDE=(".git" ".gitignore")
     DOTFILES_DIR="${config_dir}/${repo}"
+    CHECKED=()
     update_group_dirs
 }
 
 update_group_dirs() {
-    GROUP_DIRS=()
+    DOTFILE_GROUPS=()
     if truth "${IS_ROOT}" && [ -d "${DOTFILES_DIR}/root" ]; then
-        GROUP_DIRS+=("root")
+        DOTFILE_GROUPS+=("root")
     fi
     if truth "${WINDOWS}" && [ -d "${DOTFILES_DIR}/windows" ]; then
-        GROUP_DIRS+=("windows")
+        DOTFILE_GROUPS+=("windows")
     fi
     if truth "${LINUX}" && [ -d "${DOTFILES_DIR}/linux" ]; then
-        GROUP_DIRS+=("linux")
+        DOTFILE_GROUPS+=("linux")
     fi
     if [ -d "${DOTFILES_DIR}/shared" ]; then
-        GROUP_DIRS+=("shared")
+        DOTFILE_GROUPS+=("shared")
     fi
 }
 

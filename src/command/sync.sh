@@ -104,45 +104,28 @@ sync_home() {
 
     heading "${HEADING} ${DEST}"
 
-    if [ "${#GROUP_DIRS[@]}" = 0 ]; then
+    if [ "${#DOTFILE_GROUPS[@]}" = 0 ]; then
         echo "No repo groups available"
         return 1
     fi
 
-    local GROUPS_MESSAGE
-    if [ "${#GROUP_DIRS[@]}" = 1 ]; then
-        GROUPS_MESSAGE="${GROUP_DIRS}"
+    local GROUP_MESSAGE
+    if [ "${#DOTFILE_GROUPS[@]}" = 1 ]; then
+        GROUP_MESSAGE="${DOTFILE_GROUPS}"
     else
-        GROUPS_MESSAGE="($(implode "|" "${GROUP_DIRS[@]}"))"
+        GROUP_MESSAGE="($(implode "|" "${DOTFILE_GROUPS[@]}"))"
     fi
 
     info "Dir summary"
     dir_status "           Home" "${DEST}"
-    dir_status "    Config repo" "${DOTFILES_DIR}" "/${GROUPS_MESSAGE}"
+    dir_status "    Config repo" "${DOTFILES_DIR}" "/${GROUP_MESSAGE}"
     dir_status "         Backup" "${BACKUP}"
 
     info "File summary"
-    local GROUP_DIR
-    local FILE
-    local FILE_CHECK
-    local CHECKED=()
-    for GROUP_DIR in "${GROUP_DIRS[@]}"; do
-
-        for FILE in $(listdir "${DOTFILES_DIR}/${GROUP_DIR}"); do
-
-            FILE="${FILE##*/}"
-            FILE_CHECK=$(echo "${FILE}" | lower)
-
-            if ! in_array "${FILE_CHECK}" "${SYNC_EXCLUDE[@]}"; then
-
-                if ! in_array "${FILE_CHECK}" "${CHECKED[@]}"; then
-                    CHECKED+=("${FILE_CHECK}")
-                    smart_link "${DOTFILES_DIR}" "${GROUP_DIR}" "${DEST}" "${BACKUP}" "${FILE}"
-                fi
-            else
-                echo "        Ignored: ${FILE}"
-            fi
-        done
+    local GROUP
+    CHECKED=()
+    for GROUP in "${DOTFILE_GROUPS[@]}"; do
+        sync_dir "${GROUP}" "${DEST}" "${DOTFILES_DIR}/${GROUP}" "${DEST}" "${BACKUP}"
     done
     if [ "${#CHECKED[@]}" -eq 0 ]; then
         info "No files in config repo, get started with \"dotfile import\""
@@ -150,4 +133,34 @@ sync_home() {
 
     echo
     return 0
+}
+
+sync_dir() {
+    local GROUP="${1%/}"
+    local IGNORE="${2%/}"
+    local SRC="${3%/}"
+    local DEST="${4%/}"
+    local BACKUP="${5%/}"
+
+    local FILE
+    local FILE_REF
+    local FILE_NAME
+    for FILE in $(listdir "${SRC}"); do
+
+        FILE_REF="$(echo "${FILE/${DOTFILES_DIR}\/${GROUP}\//}" | lower)"
+        FILE_NAME="${FILE##*/}"
+
+        if ! in_array "${FILE_NAME}" "${SYNC_EXCLUDE[@]}"; then
+
+            if [ -d "${FILE}" ] && [[ "${FILE_NAME}" =~ ^.*\.ndd$ ]]; then
+                sync_dir "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME%.ndd}" "${BACKUP}"
+
+            elif ! in_array "${FILE_REF}" "${CHECKED[@]}"; then
+                CHECKED+=("${FILE_REF}")
+                smart_link "${GROUP}" "${IGNORE}" "${SRC}" "${DEST}" "${BACKUP}" "${FILE_NAME}"
+            fi
+        else
+            echo "        Ignored: ${FILE_NAME}"
+        fi
+    done
 }

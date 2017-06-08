@@ -32,7 +32,7 @@ command_import() {
 }
 
 list_available() {
-    info "Available imports"
+    info "Available top level imports"
 
     local HOME_FILES=($(listdir "${HOME_DIR}"))
     HOME_FILES=("${HOME_FILES[@]//${HOME_DIR}\//}")
@@ -45,7 +45,7 @@ list_available() {
     for HOME_FILE in "${HOME_FILES[@]}"; do
 
         FOUND=0
-        for DIR in "${GROUP_DIRS[@]}"; do
+        for DIR in "${DOTFILE_GROUPS[@]}"; do
             DOTFILES=($(listdir "${DOTFILES_DIR}/${DIR}"))
             DOTFILES=("${DOTFILES[@]//${DIR}\//}")
 

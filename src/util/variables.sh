@@ -38,6 +38,8 @@
 #   DOTFILES_DIR
 #   DOTFILE_GROUPS
 #   TRUE_HOME_DIR
+#   NESTING_FILE
+#   NESTED_DIRS
 
 load_global_variables() {
     VERSION="1.0"
@@ -74,11 +76,12 @@ load_global_variables() {
     ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
     SYNC_EXCLUDE=(".git" ".gitignore")
     DOTFILES_DIR="${config_dir}/${repo}"
+    NESTING_FILE="${config_dir}/${repo}/nesting_list.txt"
     CHECKED=()
-    update_group_dirs
+    update_filesystem_variables
 }
 
-update_group_dirs() {
+update_filesystem_variables() {
     DOTFILE_GROUPS=()
     if truth "${IS_ROOT}" && [ -d "${DOTFILES_DIR}/root" ]; then
         DOTFILE_GROUPS+=("root")
@@ -91,6 +94,11 @@ update_group_dirs() {
     fi
     if [ -d "${DOTFILES_DIR}/shared" ]; then
         DOTFILE_GROUPS+=("shared")
+    fi
+    NESTED_DIRS=()
+    if [ -f "${NESTING_FILE}" ]; then
+        readarray NESTED_DIRS < "${NESTING_FILE}"
+        NESTED_DIRS=("${NESTED_DIRS[@]//[$'\t\r\n ']}")
     fi
 }
 

@@ -42,6 +42,28 @@ ensure_dir() {
     return "${SUCCESS}"
 }
 
+ensure_file() {
+    local FILE="${1}"
+    local NAME="${2}"
+    local MESSAGE="${NAME} ${FILE}"
+    if [ -z "${FILE}" ]; then
+        warn "${NAME} path not set"
+        return 1
+    fi
+    if [ -f "${FILE}" ]; then
+        info "Confirmed ${MESSAGE}"
+        return 0
+    fi
+    touch "${FILE}"
+    local SUCCESS=${?}
+    if [ "${SUCCESS}" -eq 0 ]; then
+        info "Created ${MESSAGE}"
+    else
+        warn "Failed to create ${MESSAGE}"
+    fi
+    return "${SUCCESS}"
+}
+
 win_path() {
     echo $(echo ${1} | sed "s|^${UNIX_HOME}|${WIN_HOME}|g" | sed 's|/|\\|g')
 }

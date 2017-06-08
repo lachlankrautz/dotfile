@@ -69,7 +69,9 @@ ensure_dotfiles() {
     if truth "${LINUX}"; then
         ensure_dir "${DOTFILES_DIR}/linux" "group" || SUCCESS=1
     fi
-    update_group_dirs
+    update_filesystem_variables
+
+    ensure_file "${NESTING_FILE}" "nesting file" || SUCCESS=1
 
     echo
     return "${SUCCESS}"
@@ -152,8 +154,8 @@ sync_dir() {
 
         if ! in_array "${FILE_NAME}" "${SYNC_EXCLUDE[@]}"; then
 
-            if [ -d "${FILE}" ] && [[ "${FILE_NAME}" =~ ^.*\.ndd$ ]]; then
-                sync_dir "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME%.ndd}" "${BACKUP}"
+            if [ -d "${FILE}" ] && nested_dir "${FILE}"; then
+                sync_dir "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME}" "${BACKUP}"
 
             elif ! in_array "${FILE_REF}" "${CHECKED[@]}"; then
                 CHECKED+=("${FILE_REF}")
@@ -163,4 +165,18 @@ sync_dir() {
             echo "        Ignored: ${FILE_NAME}"
         fi
     done
+}
+
+nested_dir() {
+    local DIR="${1%/}"
+    if [ ! -d "${DIR}" ]; then
+        return 1
+    fi
+    DIR="${DIR//${DOTFILES_DIR}\//}"
+    for NESTED in "${NESTED_DIRS[@]}"; do
+        if [ "${DIR}" = "${NESTED}" ]; then
+            return 0
+        fi
+    done
+    return 1
 }

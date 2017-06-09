@@ -14,6 +14,7 @@ ${term_fg_yellow}Options:${term_reset}
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}                         Sync repo groups to home
   ${term_fg_green}import${term_reset} [<pattern>] [<group>] Import home to repo group (default "shared")
+  ${term_fg_green}clean${term_reset}                        Remove broken repo links
 
 EOF
 }
@@ -44,6 +45,14 @@ dotfile_option_p() {
 dotfile_option_preview() {
     PREVIEW=1
     dispatch dotfile "$@"
+}
+
+dotfile_command_clean() {
+    if [ ${HELP} = 0 ]; then
+        command_clean
+    else
+        dispatch dotfile "$@"
+    fi
 }
 
 dotfile_command_sync() {

@@ -49,6 +49,7 @@ Options:
 Commands:
   sync                         Sync repo groups to home
   import [<pattern>] [<group>] Import home to repo group (default "shared")
+  clean                        Remove broken repo links
 
 ```
 

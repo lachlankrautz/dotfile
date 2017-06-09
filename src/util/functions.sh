@@ -162,7 +162,7 @@ dir_status() {
     if [ -z "${DIR}" ]; then
         COLOUR="${term_fg_yellow}"
         DIR="path not set"
-    elif [ -d "${DIR}" ]; then
+    elif [ -d "${DIR}" ] || [ -L "${DIR}" ]; then
         COLOUR="${term_fg_green}"
     else
         COLOUR="${term_fg_red}"
@@ -180,9 +180,9 @@ echo_status() {
     local TITLE="${2}"
     local MESSAGE="${3}"
     if truth "${IS_ROOT}"; then
-        MESSAGE="${MESSAGE//$TRUE_HOME_DIR/~}"
+        MESSAGE="${MESSAGE//${TRUE_HOME_DIR}/\~}"
     else
-        MESSAGE="${MESSAGE//$HOME/~}"
+        MESSAGE="${MESSAGE//${HOME_DIR}/\~}"
     fi
     echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
 }

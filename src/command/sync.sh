@@ -83,13 +83,11 @@ sync_home() {
 
     [ -d "${DOTFILES_DIR}" ] || return 1
 
-    HEADING="Sync"
     local DEST="${HOME_DIR}"
     if truth "${IS_ROOT}"; then
         DEST="/root"
     fi
-
-    heading "${HEADING} ${DEST}"
+    heading "Sync ${DEST}"
 
     if [ "${#DOTFILE_GROUPS[@]}" = 0 ]; then
         echo "No repo groups available"

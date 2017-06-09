@@ -66,7 +66,6 @@ load_global_variables() {
     ensure_config "default" "Default config - in version control"
     ensure_config "local" "Local config - not in version control"
 
-    # trailing slashes not welcome
     config_dir="${config_dir%/}"
     if [ ! -z "${TRUE_HOME_DIR}" ]; then
         config_dir="${config_dir/~/${TRUE_HOME_DIR}}"

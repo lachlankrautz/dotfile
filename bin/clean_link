@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+clean_link() {
+    PATH_BASE="${1}"
+    PREVIEW="${2}"
+    local FILE="${3}"
+    local REPO="${4%/}"
+    local LINK="$(readlink "${FILE}")"
+
+    if [ -z "${FILE}" ]; then
+        echo "Missing file"
+        return 1
+    fi
+    if [ -z "${REPO}" ]; then
+        echo "Missing repo"
+        return 1
+    fi
+
+    if [[ "${LINK}" =~ ^${REPO} ]] && [ ! -e "${LINK}" ]; then
+
+        source "${PATH_BASE}/src/util/init.sh"
+        local FILE_DESC="${term_bold}${term_fg_red} -> ${LINK}${term_reset}"
+        if [ "${PREVIEW}" -eq 1 ]; then
+            dir_status "         Remove" "${FILE}" "${FILE_DESC}"
+        else
+            if rm "${FILE}"; then
+                dir_status "        Removed" "${FILE}" "${FILE_DESC}"
+            else
+                dir_status "  Remove Failed" "${FILE}" "${FILE_DESC}"
+            fi
+        fi
+    fi
+    return 0
+}
+
+clean_link "${@}"
+exit "${?}"

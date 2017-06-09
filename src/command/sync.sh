@@ -11,20 +11,8 @@ title_sync() {
 EOF
 }
 
-title_status() {
-    doc_title << 'EOF'
-           __        __
-     _____/ /_____ _/ /___  _______
-    / ___/ __/ __ `/ __/ / / / ___/
-   (__  ) /_/ /_/ / /_/ /_/ (__  )
-  /____/\__/\__,_/\__/\__,_/____/
-
-EOF
-}
-
 command_sync() {
-    truth "${WRITABLE}" && title_sync || title_status
-
+    title_sync
     ensure_filesystem
     ensure_dotfiles
     sync_home "${BACKUP_DIR}"
@@ -95,10 +83,7 @@ sync_home() {
 
     [ -d "${DOTFILES_DIR}" ] || return 1
 
-    local HEADING="Status"
-    if truth "${WRITABLE}"; then
-        HEADING="Sync"
-    fi
+    HEADING="Sync"
     local DEST="${HOME_DIR}"
     if truth "${IS_ROOT}"; then
         DEST="/root"
@@ -165,18 +150,4 @@ sync_dir() {
             echo "        Ignored: ${FILE_NAME}"
         fi
     done
-}
-
-nested_dir() {
-    local DIR="${1%/}"
-    if [ ! -d "${DIR}" ]; then
-        return 1
-    fi
-    DIR="${DIR//${DOTFILES_DIR}\//}"
-    for NESTED in "${NESTED_DIRS[@]}"; do
-        if [ "${DIR}" = "${NESTED}" ]; then
-            return 0
-        fi
-    done
-    return 1
 }

@@ -22,7 +22,7 @@
 #   PATH_BASE
 #   VERSION
 #   HELP
-#   WRITABLE
+#   PREVIEW
 #   UNIX_HOME
 #   WIN_HOME
 #   OS
@@ -44,8 +44,8 @@
 load_global_variables() {
     VERSION="1.0"
     HELP=0
-    if ! truth "${WRITABLE}";  then
-        WRITABLE=0
+    if ! truth "${PREVIEW}";  then
+        PREVIEW=0
     fi
     local UNAME="$(uname)"
     [ "${UNAME}" = "Linux" ] && LINUX=1 || LINUX=0

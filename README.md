@@ -8,7 +8,7 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 - Import existing home file(s) into config
 - Auto backup existing files before linking
 - Share between systems or override files with groups (shared/windows/linux/root)
-- Demo sync without making changes using "status"
+- Preview without making changes using "-p, --preview"
 - Clone git config repo (optional)
 
 # Setup
@@ -25,15 +25,16 @@ $ ln -s $(pwd)/dotfile/bin/dotfile /usr/local/bin
 - Run "dotfile" to generate config file
 - Set "git_repo" in config/local.ini (optional)
 - Set "local_config_loaded=1" to confirm current config
-- Run "dotfile status" to see what repo files will get linked on sync
+- Run "dotfile --preview sync" to see what repo files will get linked
 - Run "dotfile sync" to link config files to home
 
 # Usage
 
 ```
+$ dotfile
          __      __  _____ __
     ____/ /___  / /_/ __(_) /__
-   / __  / __ \/ __/ /_/ / / _ \ 
+   / __  / __ \/ __/ /_/ / / _ \
   / /_/ / /_/ / /_/ __/ / /  __/
   \__,_/\____/\__/_/ /_/_/\___/
 
@@ -43,22 +44,23 @@ Usage:
 Options:
   -h, --help                   Display usage
   -v, --version                Display version
+  -p, --preview                Preview changes
 
 Commands:
   sync                         Sync repo groups to home
-  status                       Demo sync without making changes
   import [<pattern>] [<group>] Import home to repo group (default "shared")
+
 ```
 
 # Example
 
 ```
-$ dotfile status
-           __        __
-     _____/ /_____ _/ /___  _______
-    / ___/ __/ __ `/ __/ / / / ___/
-   (__  ) /_/ /_/ / /_/ /_/ (__  )
-  /____/\__/\__,_/\__/\__,_/____/
+$ dotfile sync
+     _______  ______  _____
+    / ___/ / / / __ \/ ___/
+   (__  ) /_/ / / / / /__
+  /____/\__, /_/ /_/\___/
+       /____/
 
 :: Filesystem
 ==> Confirmed config dir ~/config
@@ -68,22 +70,25 @@ $ dotfile status
 ==> Confirmed config repo ~/config/my-config
 ==> Confirmed group ~/config/my-config/shared
 ==> Confirmed group ~/config/my-config/windows
+==> Confirmed nesting file ~/config/my-config/nesting_list.txt
 
-:: Sync ~
+:: Sync /home/lach
 ==> Dir summary
-           Home: ~
-    Config repo: ~/config/my-config/(windows|shared)
-         Backup: ~/config/backup_home
+           Home: /home/lach
+    Config repo: /home/lach/config/my-config/(windows|shared)
+         Backup: /home/lach/config/backup_home
 ==> File summary
          Linked: .bashrc (windows)
          Linked: .bash_profile (windows)
          Linked: .minttyrc (windows)
          Linked: .aws
          Linked: .dir_colors
-         Linked: .emacs.d
+         Linked: .emacs.d/conf
+         Linked: .emacs.d/init.el
          Linked: .gitconfig
          Linked: .gitignore_global
-         Linked: .m2
-
+         Linked: .m2/archetype-catalog.xml
+         Linked: .m2/settings.xml
+         Linked: .ssh/config
 
 ```

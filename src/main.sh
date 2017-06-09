@@ -9,10 +9,10 @@ ${term_fg_yellow}Usage:${term_reset}
 ${term_fg_yellow}Options:${term_reset}
   ${term_fg_green}-h, --help${term_reset}                   Display usage
   ${term_fg_green}-v, --version${term_reset}                Display version
+  ${term_fg_green}-p, --preview${term_reset}                Preview changes
 
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}                         Sync repo groups to home
-  ${term_fg_green}status${term_reset}                       Demo sync without making changes
   ${term_fg_green}import${term_reset} [<pattern>] [<group>] Import home to repo group (default "shared")
 
 EOF
@@ -21,32 +21,39 @@ EOF
 dotfile_option_v() {
     dotfile_option_version
 }
+
 dotfile_option_version() {
     echo "Version ${term_fg_yellow}${VERSION}${term_reset}"
 }
+
 dotfile_option_h() {
     HELP=1
     dispatch dotfile "$@"
 }
+
 dotfile_option_help() {
     HELP=1
     dispatch dotfile "$@"
 }
+
+dotfile_option_p() {
+    PREVIEW=1
+    dispatch dotfile "$@"
+}
+
+dotfile_option_preview() {
+    PREVIEW=1
+    dispatch dotfile "$@"
+}
+
 dotfile_command_sync() {
     if [ ${HELP} = 0 ]; then
-        WRITABLE=1
         command_sync
     else
         dispatch dotfile "$@"
     fi
 }
-dotfile_command_status() {
-    if [ ${HELP} = 0 ]; then
-        command_sync
-    else
-        dispatch dotfile "$@"
-    fi
-}
+
 dotfile_command_import() {
     if [ ${HELP} = 0 ]; then
         command_import "$@"
@@ -54,13 +61,16 @@ dotfile_command_import() {
         dispatch dotfile "$@"
     fi
 }
+
 dotfile_call_() {
     BAD_CALL=1
     usage
     exit
 }
+
 dotfile_() {
     usage
 }
+
 ensure_not_root
 dispatch dotfile "$@"

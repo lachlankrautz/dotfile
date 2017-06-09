@@ -5,7 +5,7 @@ sudo_command() {
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
 TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
-WRITABLE="${WRITABLE}"
+PREVIEW="${PREVIEW}"
 source "${PATH_BASE}/src/util/init.sh"
 ${SUDO_COMMAND} "${@}"
 EOF
@@ -90,7 +90,7 @@ smart_link() {
 
     elif [ -e "${DEST_FILE}" ]; then
 
-        if ! truth ${WRITABLE}; then
+        if truth ${PREVIEW}; then
             local BACKUP_COLOUR="${term_fg_yellow}"
             if [ ! -d "${BACKUP}" ]; then
                 BACKUP_COLOUR="${term_fg_red}"
@@ -105,7 +105,7 @@ smart_link() {
         fi
     fi
 
-    if ! truth "${WRITABLE}"; then
+    if truth "${PREVIEW}"; then
         local COLOUR="${term_fg_white}"
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_yellow}"
@@ -210,6 +210,36 @@ backup_move() {
         echo_status "${term_fg_red}" "  Backup Failed" "${FILE}"
     fi
     return "${SUCCESS}"
+}
+
+nested_dir() {
+    local DIR="${1%/}"
+    if [ ! -d "${DIR}" ]; then
+        return 1
+    fi
+    DIR="${DIR//${DOTFILES_DIR}\//}"
+    for NESTED in "${NESTED_DIRS[@]}"; do
+        if [ "${DIR}" = "${NESTED}" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+ensure_nested_dir() {
+    local GROUP="${1}"
+    local DIR="${2%/}"
+    local DIR_REF="${DIR//${DOTFILES_DIR}\//}"
+
+    if [ ! -d "${DIR}" ]; then
+        mkdir -p "${DIR}" || return 1
+    fi
+
+    if ! nested_dir "${DIR}"; then
+        echo "${DIR_REF}" >> "${NESTING_FILE}" || return 1
+        update_filesystem_variables
+    fi
+    return 0
 }
 
 main_title() {

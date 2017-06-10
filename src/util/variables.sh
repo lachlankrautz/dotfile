@@ -42,7 +42,7 @@
 #   NESTED_DIRS
 
 load_global_variables() {
-    VERSION="1.0"
+    VERSION="1.3"
     HELP=0
     if ! truth "${PREVIEW}";  then
         PREVIEW=0

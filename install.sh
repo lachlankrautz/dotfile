@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-win_path() {
-    echo $(echo ${1} | sed "s|^${UNIX_HOME}|${WIN_HOME}|g" | sed 's|/|\\|g')   
-}
-
 install_dotfile() {
     local SUDO_CMD="sudo"
 
@@ -62,7 +58,7 @@ install_dotfile() {
 
     chmod 755 /tmp/dotfile/bin/dotfile
     if [ ! "${?}" -eq 0 ]; then
-	echo "Unable to set execuable permissions"
+	echo "Unable to set executable permissions"
 	return 1
     fi
 
@@ -93,8 +89,8 @@ install_dotfile() {
 
 	echo "Creating system link"
 	if [ "${WINDOWS}" -eq 1 ]; then
-	    local WIN_SRC="$(win_path "/opt/dotfile/bin/dotfile")"
-	    local WIN_DEST="$(win_path "/usr/bin/dotfile")"
+	    local WIN_SRC="$(cygpath -w "/opt/dotfile/bin/dotfile")"
+	    local WIN_DEST="$(cygpath -w "/usr/bin/dotfile")"
 	    local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
 	    cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
 	else

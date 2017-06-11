@@ -42,7 +42,7 @@
 #   NESTED_DIRS
 
 load_global_variables() {
-    VERSION="1.0"
+    VERSION="1.4"
     HELP=0
     if ! truth "${PREVIEW}";  then
         PREVIEW=0
@@ -58,13 +58,17 @@ load_global_variables() {
     HOME_DIR="$(abspath "~")"
     IS_ROOT=0
     if truth "${LINUX}" && [ "${EUID}" -eq 0 ]; then
-       IS_ROOT=1
-       HOME_DIR="/root"
+        IS_ROOT=1
+        HOME_DIR="/root"
+        if [ -z "${TRUE_HOME_DIR}" ]; then
+            error "Unable to determine home dir"
+            exit
+        fi
+    else
+        TRUE_HOME_DIR="${HOME_DIR}"
     fi
 
-    local BAD_CONFIGS=()
-    ensure_config "default" "Default config - in version control"
-    ensure_config "local" "Local config - not in version control"
+    ensure_config
 
     config_dir="${config_dir%/}"
     if [ ! -z "${TRUE_HOME_DIR}" ]; then
@@ -102,17 +106,27 @@ update_filesystem_variables() {
 }
 
 ensure_config() {
-    local TYPE="${1}"
-    local TITLE="${2}"
-    local FILE="${PATH_BASE}/config/${TYPE}.ini"
+    local PATH_CONFIG="${TRUE_HOME_DIR}/.config/dotfile"
+    local FILE="${PATH_CONFIG}/config.ini"
+
+    if [ ! -d "${PATH}" ]; then
+        if ! mkdir -p "${PATH_CONFIG}"; then
+            error "Unable to create config dir: ${PATH_CONFIG}"
+            exit 1
+        fi
+    fi
 
     if [ ! -f "${FILE}" ]; then
-        create_config "${TYPE}" "${FILE}" "${TITLE}"
+        create_config "${FILE}"
+        if [ ! -f "${FILE}" ]; then
+            error "Unable to create config file: ${FILE}"
+            exit 1
+        fi
     fi
 
     cfg_parser "${FILE}"
     if ! cfg_section_dotfile; then
-        echo "Failed to load config: ${FILE}"
+        error "Failed to load config: ${FILE}"
         exit 1
     fi
 
@@ -120,15 +134,9 @@ ensure_config() {
 }
 
 create_config() {
-    local TYPE="${1}"
-    local FILE="${2}"
-    local TITLE="${3}"
-
+    local FILE="${1}"
     cat << EOF >> ${FILE}
-;;; ${TITLE}
-
-[general]
-
+[dotfile]
 ;;; dir for config repo(s) and backups
 config_dir=~/config
 

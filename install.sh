@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-SUDO_CMD=""
+SUDO_CMD="sudo"
 if [[ "${OS}" =~ .*indows.* ]]; then
-    SUDO_CMD="sudo"
+    SUDO_CMD=""
 else
     if [ "${EUID}" -eq 0 ]; then
         echo "Do not install as root; user home dir is needed"

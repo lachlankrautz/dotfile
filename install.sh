@@ -65,21 +65,20 @@ install_dotfile() {
     fi
 
     local NEED_LINK=0
+
+    local LINK=$(readlink /usr/bin/dotfile)
+    if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "/opt/dotfile/bin/dotfile" ]; then
+	NEED_LINK=1
+	echo "Existing link points elsewhere, removing"
+	${SUDO_CMD} rm /usr/bin/dotfile
+	if [ ! "${?}" -eq 0 ]; then
+	    echo "Unable to remove bad link"
+	    return 1
+	fi
+    fi
+
     if [ ! -f /usr/bin/dotfile ]; then
 	NEED_LINK=1
-    else
-	local LINK=$(readlink /usr/bin/dotfile)
-	if [ ! "${LINK}" = "/opt/dotfile/bin/dotfile" ]; then
-	    NEED_LINK=1
-	    echo "bad link"
-	    ${SUDO_CMD} rm /usr/bin/dotfile
-	    if [ ! "${?}" -eq 0 ]; then
-		echo "Unable to remove bad link"
-		return 1
-	    fi
-	else
-	    echo "System link confimed"
-	fi
     fi
 
     if [ "${NEED_LINK}" -eq 1 ]; then
@@ -91,11 +90,23 @@ install_dotfile() {
 	fi
     fi
 
+    if [ -L /usr/bin/dotfile ] && [ "$(readlink /usr/bin/dotfile)" = "/opt/dotfile/bin/dotfile" ]; then
+	echo "Link confirmed"
+    else
+	echo "Unable to install link"
+	return 1
+    fi
+
     # make sure config file is created for current user
     # dotfile > /dev/null
     dotfile > /dev/null
     return "${?}"
 }
 
-install_dotfile
-exit "${?}"
+if install_dotfile; then
+    echo "Install completed"
+    exit 0
+else
+    echo "Install failed"
+    exit 1
+fi

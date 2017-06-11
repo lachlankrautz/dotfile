@@ -24,6 +24,7 @@ install_dotfile() {
 	    echo "Unable to remove old version"
 	    return 1
 	fi
+	echo
     fi
 
     if [ ! -d /tmp ]; then
@@ -39,11 +40,13 @@ install_dotfile() {
 	fi
     fi
 
+    echo "Downloading"
     git clone --depth=1 --branch=master git@github.com:lachlankrautz/dotfile /tmp/dotfile
     if [ ! "${?}" -eq 0 ]; then
 	echo "Unable to clone project"
 	return 1
     fi
+    echo
 
     rm -rf /tmp/dotfile/.git /tmp/dotfile/.gitignore
     if [ ! "${?}" -eq 0 ]; then
@@ -57,15 +60,16 @@ install_dotfile() {
 	return 1
     fi
 
-    echo "Installing to /opt/dotfile"
+    echo "Moving to /opt/dotfile"
     ${SUDO_CMD} mv /tmp/dotfile /opt
     if [ ! "${?}" -eq 0 ]; then
 	echo "Unable to move project to /opt"
 	return 1
     fi
+    echo
 
+    echo "Checking path executable"
     local NEED_LINK=0
-
     local LINK=$(readlink /usr/bin/dotfile)
     if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "/opt/dotfile/bin/dotfile" ]; then
 	NEED_LINK=1
@@ -76,11 +80,9 @@ install_dotfile() {
 	    return 1
 	fi
     fi
-
     if [ ! -f /usr/bin/dotfile ]; then
 	NEED_LINK=1
     fi
-
     if [ "${NEED_LINK}" -eq 1 ]; then
 	echo "Creating system link"
 	${SUDO_CMD} ln -s /opt/dotfile/bin/dotfile /usr/bin/dotfile
@@ -96,17 +98,25 @@ install_dotfile() {
 	echo "Unable to install link"
 	return 1
     fi
+    echo
 
     # make sure config file is created for current user
     # dotfile > /dev/null
     dotfile > /dev/null
-    return "${?}"
+    local RESULT="${?}"
+    return "${RESULT}"
 }
 
-if install_dotfile; then
+echo "Installing dotfile"
+echo
+
+install_dotfile
+if [ "${?}" -eq 0 ]; then
     echo "Install completed"
+    echo
     exit 0
 else
     echo "Install failed"
+    echo
     exit 1
 fi

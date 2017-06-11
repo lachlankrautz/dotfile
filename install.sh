@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
+win_path() {
+    echo $(echo ${1} | sed "s|^${UNIX_HOME}|${WIN_HOME}|g" | sed 's|/|\\|g')   
+}
+
 install_dotfile() {
     local SUDO_CMD="sudo"
 
+    local WINDOWS=0
     if [[ "${OS}" =~ .*indows.* ]]; then
 	SUDO_CMD=""
+	WINDOWS=1
     else
 	if [ "${EUID}" -eq 0 ]; then
             echo "Do not install as root; user home dir is needed"
@@ -84,8 +90,17 @@ install_dotfile() {
 	NEED_LINK=1
     fi
     if [ "${NEED_LINK}" -eq 1 ]; then
+
 	echo "Creating system link"
-	${SUDO_CMD} ln -s /opt/dotfile/bin/dotfile /usr/bin/dotfile
+	if [ "${WINDOWS}" -eq 1 ]; then
+	    local WIN_SRC="/opt/dotfile/bin/dotfile"
+	    local WIN_DEST="/usr/bin/dotfile"
+	    local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
+	    cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
+	else
+	    ${SUDO_CMD} ln -s /opt/dotfile/bin/dotfile /usr/bin/dotfile
+	fi
+
 	if [ ! "${?}" -eq 0 ]; then
 	    echo "Unable to create system link"
 	    return 1

@@ -74,7 +74,7 @@ dotfile_command_import() {
 dotfile_call_() {
     BAD_CALL=1
     usage
-    exit
+    exit 1
 }
 
 dotfile_() {
@@ -83,3 +83,4 @@ dotfile_() {
 
 ensure_not_root
 dispatch dotfile "$@"
+exit 0

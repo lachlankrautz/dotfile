@@ -100,8 +100,7 @@ install_dotfile() {
     fi
     echo
 
-    # make sure config file is created for current user
-    # dotfile > /dev/null
+    # run to make sure config file is created for current user
     dotfile > /dev/null
     local RESULT="${?}"
     return "${RESULT}"

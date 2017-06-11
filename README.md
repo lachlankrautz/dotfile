@@ -9,22 +9,14 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 - Auto backup existing files before linking
 - Share between systems or override files with groups (shared/windows/linux/root)
 - Preview without making changes using "-p, --preview"
-- Clone git config repo (optional)
+
+# Install
+```
+$ bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/install.sh)
+```
 
 # Setup
-- Clone dotfile
-```
-$ git clone git@github.com:lachlankrautz/dotfile
-
-```
-- Add bin/dotfile to path (optional)
-```
-$ ln -s $(pwd)/dotfile/bin/dotfile /usr/local/bin
-
-```
-- Run "dotfile" to generate config file
-- Set "git_repo" in config/local.ini (optional)
-- Set "local_config_loaded=1" to confirm current config
+- Confirm config in ~/config/dotfile/config.ini
 - Run "dotfile --preview sync" to see what repo files will get linked
 - Run "dotfile sync" to link config files to home
 

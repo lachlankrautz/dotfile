@@ -93,8 +93,8 @@ install_dotfile() {
 
 	echo "Creating system link"
 	if [ "${WINDOWS}" -eq 1 ]; then
-	    local WIN_SRC="/opt/dotfile/bin/dotfile"
-	    local WIN_DEST="/usr/bin/dotfile"
+	    local WIN_SRC="$(win_path "/opt/dotfile/bin/dotfile")"
+	    local WIN_DEST="$(win_path "/usr/bin/dotfile")"
 	    local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
 	    cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
 	else

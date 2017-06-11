@@ -50,8 +50,8 @@ load_global_variables() {
     local UNAME="$(uname)"
     [ "${UNAME}" = "Linux" ] && LINUX=1 || LINUX=0
     [[ "${OS}" =~ .*indows.* ]] && WINDOWS=1 || WINDOWS=0
-    UNIX_HOME=~
-    WIN_HOME=
+    UNIX_HOME="~"
+    WIN_HOME=""
     if [ ${WINDOWS} -eq 1 ] && [ -n "${HOMEDRIVE}" ] && [ -n "${HOMEPATH}" ]; then
         WIN_HOME=$(echo "${HOMEDRIVE}${HOMEPATH}" | sed 's|\\|/|g')
     fi
@@ -111,7 +111,10 @@ ensure_config() {
     fi
 
     cfg_parser "${FILE}"
-    cfg_section_general
+    if ! cfg_section_dotfile; then
+        echo "Failed to load config: ${FILE}"
+        exit 1
+    fi
 
     return 0
 }

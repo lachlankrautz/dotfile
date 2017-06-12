@@ -41,7 +41,7 @@ install_dotfile() {
     fi
 
     echo "Downloading"
-    git clone --depth=1 --branch=master git@github.com:lachlankrautz/dotfile /tmp/dotfile
+    git clone --depth=1 --branch=master https://github.com/lachlankrautz/dotfile /tmp/dotfile
     if [ ! "${?}" -eq 0 ]; then
         echo "Unable to clone project"
         return 1

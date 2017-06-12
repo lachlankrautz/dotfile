@@ -157,7 +157,7 @@ repo=${repo}
 ;;; config repo address to clone into config_dir (optional)
 git_repo=${git_repo}
 
-;;; also sync dotfiles to /root
+;;; sync dotfiles to /root
 sync_root=0
 EOF
 }

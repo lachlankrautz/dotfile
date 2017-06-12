@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
+heading() {
+    local MESSAGE="${1}"
+    tput setaf 2
+    echo -en "${MESSAGE}"
+    tput sgr0
+    echo ""
+}
+
 install_dotfile() {
     local SUDO_CMD="sudo"
 
-    echo "::Installing dotfile"
     echo
 
     local WINDOWS=0
@@ -20,16 +27,6 @@ install_dotfile() {
         return 1
     fi
 
-    if [ -d /opt/dotfile ]; then
-        echo "Removing old version"
-        ${SUDO_CMD} rm -rf /opt/dotfile
-        if [ ! "${?}" -eq 0 ]; then
-            echo "Unable to remove old version"
-            return 1
-        fi
-        echo
-    fi
-
     if [ ! -d /tmp ]; then
         echo "Missing temp dir"
         return 1
@@ -43,13 +40,12 @@ install_dotfile() {
         fi
     fi
 
-    echo "Downloading"
+    heading "::Downloading"
     git clone --depth=1 --branch=master https://github.com/lachlankrautz/dotfile /tmp/dotfile
     if [ ! "${?}" -eq 0 ]; then
         echo "Unable to clone project"
         return 1
     fi
-    echo
 
     rm -rf /tmp/dotfile/.git /tmp/dotfile/.gitignore
     if [ ! "${?}" -eq 0 ]; then
@@ -57,10 +53,19 @@ install_dotfile() {
         return 1
     fi
 
-    chmod 755 /tmp/dotfile/bin/dotfile
+    chmod 755 /tmp/dotfile/bin/dotfile /tmp/dotfile/bin/install
     if [ ! "${?}" -eq 0 ]; then
         echo "Unable to set executable permissions"
         return 1
+    fi
+
+    if [ -d /opt/dotfile ]; then
+        echo "Removing old version"
+        ${SUDO_CMD} rm -rf /opt/dotfile
+        if [ ! "${?}" -eq 0 ]; then
+            echo "Unable to remove old version"
+            return 1
+        fi
     fi
 
     echo "Moving to /opt/dotfile"
@@ -69,20 +74,25 @@ install_dotfile() {
         echo "Unable to move project to /opt"
         return 1
     fi
-    echo
-
     ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/dotfile" "/usr/bin/dotfile"
     ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/install" "/usr/bin/dotfile-update"
+    echo
+
+    heading "::Current config ~/.config/dotfile/config.ini"
+    tput setaf 3
+    cat ~/.config/dotfile/config.ini
+    tput sgr0
+    echo
 
     # run to make sure config file is created for current user
     dotfile > /dev/null
     if [ "${?}" -eq 0 ]; then
-        echo "Install completed"
+        heading "::Install completed"
         dotfile --version
         echo
         exit 0
     else
-        echo "Install failed"
+        heading "::Install failed"
         echo
         exit 1
     fi
@@ -130,10 +140,9 @@ ensure_link() {
     local MESSAGE="${DEST} -> ${SRC}"
     if [ -L "${DEST}" ] && [ "$(readlink "${DEST}")" = "${SRC}" ]; then
         echo "Link confirmed ${MESSAGE}"
-        echo
+        return 0
     else
         echo "Unable to install link ${MESSAGE}"
-        echo
         return 1
     fi
 }

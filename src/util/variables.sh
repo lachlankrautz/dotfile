@@ -160,4 +160,5 @@ git_repo=${git_repo}
 ;;; sync dotfiles to /root
 sync_root=0
 EOF
+    sync
 }

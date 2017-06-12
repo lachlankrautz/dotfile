@@ -33,7 +33,7 @@ ensure_dir() {
         return 0
     fi
     mkdir -p "${DIR}"
-    local SUCCESS=${?}
+    local SUCCESS="${?}"
     if [ "${SUCCESS}" -eq 0 ]; then
         info "Created ${MESSAGE}"
     else
@@ -55,7 +55,7 @@ ensure_file() {
         return 0
     fi
     touch "${FILE}"
-    local SUCCESS=${?}
+    local SUCCESS="${?}"
     if [ "${SUCCESS}" -eq 0 ]; then
         info "Created ${MESSAGE}"
     else
@@ -90,7 +90,7 @@ smart_link() {
 
     elif [ -e "${DEST_FILE}" ]; then
 
-        if truth ${PREVIEW}; then
+        if truth "${PREVIEW}"; then
             local BACKUP_COLOUR="${term_fg_yellow}"
             if [ ! -d "${BACKUP}" ]; then
                 BACKUP_COLOUR="${term_fg_red}"
@@ -124,8 +124,8 @@ smart_link() {
     if [ "${WINDOWS}" -eq 1 ]; then
         [ -d "${SRC_FILE}" ] && OPT="/D " || OPT=""
 
-        local WIN_SRC_FILE="$(win_path "${SRC_FILE}")"
-        local WIN_DEST_FILE="$(win_path "${DEST_FILE}")"
+        local WIN_SRC_FILE="$(cygpath -w "${SRC_FILE}")"
+        local WIN_DEST_FILE="$(cygpath -w "${DEST_FILE}")"
         local CMD_C="mklink ${OPT}${WIN_DEST_FILE} ${WIN_SRC_FILE}"
 
         # Windows link attempt
@@ -136,7 +136,7 @@ smart_link() {
     fi
 
     # must be next command after the link attempt to catch the process result
-    if [ $? -eq 0 ]; then
+    if [ "${?}" -eq 0 ]; then
         echo_status "${term_fg_green}" "   Link Created" "${FILE_STATUS}"
         return 0
     else
@@ -146,6 +146,7 @@ smart_link() {
 }
 
 doc_title() {
+    local LINE=""
     echo -n "${term_bold}${term_fg_blue}"
     while read -r LINE; do
         echo "${LINE}"
@@ -196,9 +197,9 @@ heading() {
 }
 
 backup_move() {
-    local SRC=${1%/}
-    local DEST=${2%/}
-    local FILE=${3##*/}
+    local SRC="${1%/}"
+    local DEST="${2%/}"
+    local FILE="${3##*/}"
     local BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
 
     mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"

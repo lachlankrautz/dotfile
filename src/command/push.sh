@@ -66,10 +66,13 @@ command_push() {
         return 1
     fi
 
+    local TILDE="~"
+    local TMP_CONFIG_DIR="${config_dir/${TRUE_HOME_DIR}/${TILDE}}"
+
     info "Running script on ${SSH_HOST}"
     ssh -T "${SSH_HOST}" << EOF
 export TERM=xterm
-export config_dir="${config_dir}"
+export config_dir="${TMP_CONFIG_DIR}"
 export repo="${repo}"
 export git_repo="${git_repo}"
 
@@ -78,7 +81,15 @@ if [ ! -f "${ZIP_FILE}" ]; then
     exit 1
 fi
 
-tar xvfz -C "${config_dir}"
+if [ ! -d "${TMP_CONFIG_DIR}" ]; then
+    mkdir -p "${TMP_CONFIG_DIR}"
+fi
+if [ -d "${TMP_CONFIG_DIR}/${repo}" ]; then
+    echo "Clearing old config repo"
+    rm -rf "${TMP_CONFIG_DIR}/${repo}"
+fi
+
+tar xvfz "${ZIP_FILE}" -C "${config_dir}" > /dev/null
 if [ -f "${ZIP_FILE}" ]; then
     rm "${ZIP_FILE}"
 fi
@@ -89,7 +100,7 @@ fi
 
 bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/install.sh)
 
-# dotfile sync
+dotfile sync
 
 EOF
     if [ ! "${?}" -eq 0 ]; then

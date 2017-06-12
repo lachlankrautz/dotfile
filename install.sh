@@ -18,7 +18,7 @@ install_dotfile() {
     fi
 
     if [ -d /opt/dotfile ]; then
-        echo "Uninstalling old version"
+        echo "Removing old version"
         ${SUDO_CMD} rm -rf /opt/dotfile
         if [ ! "${?}" -eq 0 ]; then
             echo "Unable to remove old version"

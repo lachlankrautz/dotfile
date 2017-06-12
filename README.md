@@ -10,6 +10,7 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 - Sync different files for different systems using repo groups (shared/windows/linux/root)
 - Preview without making changes using "-p, --preview"
 - Clean broken links on out of date system
+- Push dotfile and config to remote server
 
 # Install
 ```
@@ -43,6 +44,7 @@ Options:
 Commands:
   sync                         Sync repo groups to home
   import [<pattern>] [<group>] Import home to repo group (default "shared")
+  push   [user@host]           Push dotfile and config to remote server
   clean                        Remove broken repo links
 
 ```
@@ -61,17 +63,17 @@ $ dotfile sync
 ==> Confirmed config dir ~/config
 ==> Confirmed backup dir ~/config/backup_home
 
-:: Config repo
+:: Config repo (git@notime.co:my-config)
 ==> Confirmed config repo ~/config/my-config
 ==> Confirmed group ~/config/my-config/shared
 ==> Confirmed group ~/config/my-config/windows
 ==> Confirmed nesting file ~/config/my-config/nesting_list.txt
 
-:: Sync /home/lach
+:: Sync ~
 ==> Dir summary
-           Home: /home/lach
-    Config repo: /home/lach/config/my-config/(windows|shared)
-         Backup: /home/lach/config/backup_home
+           Home: ~
+    Config repo: ~/config/my-config/(windows|shared)
+         Backup: ~/config/backup_home
 ==> File summary
          Linked: .bashrc (windows)
          Linked: .bash_profile (windows)

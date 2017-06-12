@@ -3,7 +3,7 @@
 install_dotfile() {
     local SUDO_CMD="sudo"
 
-    echo "Installing dotfile"
+    echo "::Installing dotfile"
     echo
 
     local WINDOWS=0
@@ -71,14 +71,14 @@ install_dotfile() {
     fi
     echo
 
-    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/dotfile" "/usr/bin/dotfile" "dotfile"
-    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/install" "/usr/bin/dotfile-update" "dotfile updater"
-    echo
+    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/dotfile" "/usr/bin/dotfile"
+    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/install" "/usr/bin/dotfile-update"
 
     # run to make sure config file is created for current user
     dotfile > /dev/null
     if [ "${?}" -eq 0 ]; then
         echo "Install completed"
+        dotfile --version
         echo
         exit 0
     else
@@ -92,9 +92,9 @@ ensure_link() {
     local SUDO_CMD="${1}"
     local SRC="${2%/}"
     local DEST="${3%/}"
-    local NAME="${4}"
+    local NAME="${3##*/}"
 
-    echo "Checking path executable ${NAME}"
+    echo "Checking executable: ${NAME}"
     local NEED_LINK=0
     local LINK="$(readlink "${DEST}")"
     if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
@@ -127,10 +127,13 @@ ensure_link() {
         fi
     fi
 
+    local MESSAGE="${DEST} -> ${SRC}"
     if [ -L "${DEST}" ] && [ "$(readlink "${DEST}")" = "${SRC}" ]; then
-        echo "Link confirmed"
+        echo "Link confirmed ${MESSAGE}"
+        echo
     else
-        echo "Unable to install link"
+        echo "Unable to install link ${MESSAGE}"
+        echo
         return 1
     fi
 }

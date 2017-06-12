@@ -98,7 +98,7 @@ if [ -f ~/.config/dotfile/config.ini ]; then
     rm ~/.config/dotfile/config.ini
 fi
 
-bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/bin/install)
 
 dotfile sync
 

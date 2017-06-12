@@ -183,7 +183,7 @@ echo_status() {
 heading() {
     local MESSAGE="${1}"
     local TILDE="~"
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//$HOME/${TILDE}}${term_reset}"
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
 }
 
 backup_move() {

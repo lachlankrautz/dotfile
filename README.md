@@ -5,10 +5,11 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 # Features
 - Sync config to home dir and /root home dir (optional)
 - Cross platform system links; "mklink [/D]" on Windows, "ln -s" on Linux
-- Import existing home file(s) into config
-- Auto backup existing files before linking
-- Share between systems or override files with groups (shared/windows/linux/root)
+- Import existing dotfile(s) into config repo
+- Backup existing files before replacing with links
+- Sync different files for different systems using repo groups (shared/windows/linux/root)
 - Preview without making changes using "-p, --preview"
+- Clean broken links on out of date system
 
 # Install
 ```
@@ -16,9 +17,10 @@ $ bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/
 ```
 
 # Setup
-- Confirm config in ~/config/dotfile/config.ini
-- Run "dotfile --preview sync" to see what repo files will get linked
-- Run "dotfile sync" to link config files to home
+- Edit config ~/.config/dotfile/config.ini
+- Import dotfiles into config repo "dotfile import .emacs.d/init.el"
+- Preview sync action "dotfile --preview sync"
+- Run sync "dotfile sync"
 
 # Usage
 

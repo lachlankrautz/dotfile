@@ -135,16 +135,27 @@ ensure_config() {
 
 create_config() {
     local FILE="${1}"
+
+    if [ -z "${config_dir}" ]; then
+        config_dir="~/config"
+    fi
+    if [ -z "${repo}" ]; then
+        repo="my-config"
+    fi
+    if [ -z "${git_repo}" ]; then
+        git_repo=""
+    fi
+
     cat << EOF >> ${FILE}
 [dotfile]
 ;;; dir for config repo(s) and backups
-config_dir=~/config
+config_dir=${config_dir}
 
 ;;; selected config repo in config_dir
-repo=my-config
+repo=${repo}
 
 ;;; config repo address to clone into config_dir (optional)
-git_repo=
+git_repo=${git_repo}
 
 ;;; also sync dotfiles to /root
 sync_root=0

@@ -10,13 +10,18 @@ load_lib() {
     cd "${PATH_TMP}"
 }
 
+source_dir() {
+    local PATH_COMMANDS="${1%/}"
+    local FILE=""
+    for FILE in "${PATH_COMMANDS}/"*; do
+        source "${FILE}"
+    done
+}
+
 load_lib "bashful/bin/bashful"
 load_lib "workshop/lib/workshop/dispatch.sh"
 load_lib "bash-ini-parser/bash-ini-parser"
-
 source "${PATH_BASE}/src/util/functions.sh"
 source "${PATH_BASE}/src/util/variables.sh"
-source "${PATH_BASE}/src/command/import.sh"
-source "${PATH_BASE}/src/command/sync.sh"
-source "${PATH_BASE}/src/command/clean.sh"
+source_dir "${PATH_BASE}/src/command"
 load_global_variables

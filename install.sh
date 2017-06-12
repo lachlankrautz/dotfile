@@ -65,7 +65,7 @@ install_dotfile() {
     fi
 
     if [ -d /opt/dotfile ]; then
-        echo "Uninstalling old version"
+        echo "Removing old version"
         ${SUDO_CMD} rm -rf /opt/dotfile
         if [ ! "${?}" -eq 0 ]; then
             echo "Unable to remove old version"
@@ -88,7 +88,7 @@ install_dotfile() {
     fi
 
     echo "Downloading"
-    git clone --depth=1 --branch=master git@github.com:lachlankrautz/dotfile /tmp/dotfile
+    git clone --depth=1 --branch=master https://github.com/lachlankrautz/dotfile /tmp/dotfile
     if [ ! "${?}" -eq 0 ]; then
         echo "Unable to clone project"
         return 1

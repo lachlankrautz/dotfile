@@ -176,20 +176,14 @@ echo_status() {
     local COLOUR="${1}"
     local TITLE="${2}"
     local MESSAGE="${3}"
-    if truth "${IS_ROOT}"; then
-        MESSAGE="${MESSAGE//${TRUE_HOME_DIR}/\~}"
-    else
-        MESSAGE="${MESSAGE//${HOME_DIR}/\~}"
-    fi
-    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
+    local TILDE="~"
+    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
 }
 
 heading() {
     local MESSAGE="${1}"
-    if [ ! "${HOME}" = "/root" ]; then
-        MESSAGE="${MESSAGE//$HOME/~}"
-    fi
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE}${term_reset}"
+    local TILDE="~"
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//$HOME/${TILDE}}${term_reset}"
 }
 
 backup_move() {

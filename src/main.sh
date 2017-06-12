@@ -14,7 +14,7 @@ ${term_fg_yellow}Options:${term_reset}
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}                         Sync repo groups to home
   ${term_fg_green}import${term_reset} [<pattern>] [<group>] Import home to repo group (default "shared")
-  ${term_fg_green}push${term_reset}   [user@host]           Push config to remote server and sync
+  ${term_fg_green}push${term_reset}   [user@host]           Push config to remote host and sync
   ${term_fg_green}clean${term_reset}                        Remove broken repo links
 
 EOF

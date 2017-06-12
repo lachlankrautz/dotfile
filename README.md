@@ -10,7 +10,7 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 - Sync different files for different systems using repo groups (shared/windows/linux/root)
 - Preview without making changes using "-p, --preview"
 - Clean broken links on out of date system
-- Push dotfile and config to remote server
+- Push dotfile with current config to remote server and sync
 
 # Install
 ```
@@ -44,7 +44,7 @@ Options:
 Commands:
   sync                         Sync repo groups to home
   import [<pattern>] [<group>] Import home to repo group (default "shared")
-  push   [user@host]           Push dotfile and config to remote server
+  push   [user@host]           Push dotfile with current config to remote server and sync
   clean                        Remove broken repo links
 
 ```

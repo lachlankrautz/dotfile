@@ -13,7 +13,7 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 
 # Install
 ```
-$ bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/install.sh)
+$ bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/bin/install)
 ```
 
 # Setup

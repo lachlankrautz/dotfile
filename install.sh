@@ -1,5 +1,52 @@
 #!/usr/bin/env bash
 
+ensure_link() {
+    local SUDO_CMD="${1}"
+    local SRC="${2%/}"
+    local DEST="${3%/}"
+    local NAME="${4}"
+
+    echo "Checking path executable ${NAME}"
+    local NEED_LINK=0
+    local LINK="$(readlink "${DEST}")"
+    if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
+        NEED_LINK=1
+        echo "Existing link points elsewhere, removing"
+        ${SUDO_CMD} rm "${DEST}"
+        if [ ! "${?}" -eq 0 ]; then
+            echo "Unable to remove bad link"
+            return 1
+        fi
+    fi
+    if [ ! -f "${DEST}" ]; then
+        NEED_LINK=1
+    fi
+    if [ "${NEED_LINK}" -eq 1 ]; then
+
+        echo "Creating system link"
+        if [ "${WINDOWS}" -eq 1 ]; then
+            local WIN_SRC="$(cygpath -w "${SRC}")"
+            local WIN_DEST="$(cygpath -w "${DEST}")"
+            local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
+            cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
+        else
+            ${SUDO_CMD} ln -s "${SRC}" "${DEST}"
+        fi
+
+        if [ ! "${?}" -eq 0 ]; then
+            echo "Unable to create system link"
+            return 1
+        fi
+    fi
+
+    if [ -L "${DEST}" ] && [ "$(readlink "${DEST}")" = "${SRC}" ]; then
+        echo "Link confirmed"
+    else
+        echo "Unable to install link"
+        return 1
+    fi
+}
+
 install_dotfile() {
     local SUDO_CMD="sudo"
 
@@ -68,45 +115,8 @@ install_dotfile() {
     fi
     echo
 
-    echo "Checking path executable"
-    local NEED_LINK=0
-    local LINK=$(readlink /usr/bin/dotfile)
-    if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "/opt/dotfile/bin/dotfile" ]; then
-        NEED_LINK=1
-        echo "Existing link points elsewhere, removing"
-        ${SUDO_CMD} rm /usr/bin/dotfile
-        if [ ! "${?}" -eq 0 ]; then
-            echo "Unable to remove bad link"
-            return 1
-        fi
-    fi
-    if [ ! -f /usr/bin/dotfile ]; then
-        NEED_LINK=1
-    fi
-    if [ "${NEED_LINK}" -eq 1 ]; then
-
-    echo "Creating system link"
-    if [ "${WINDOWS}" -eq 1 ]; then
-        local WIN_SRC="$(cygpath -w "/opt/dotfile/bin/dotfile")"
-        local WIN_DEST="$(cygpath -w "/usr/bin/dotfile")"
-        local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
-        cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
-    else
-        ${SUDO_CMD} ln -s /opt/dotfile/bin/dotfile /usr/bin/dotfile
-    fi
-
-    if [ ! "${?}" -eq 0 ]; then
-        echo "Unable to create system link"
-        return 1
-    fi
-    fi
-
-    if [ -L /usr/bin/dotfile ] && [ "$(readlink /usr/bin/dotfile)" = "/opt/dotfile/bin/dotfile" ]; then
-        echo "Link confirmed"
-    else
-        echo "Unable to install link"
-        return 1
-    fi
+    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/dotfile" "/usr/bin/dotfile" "dotfile"
+    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/install" "/usr/bin/dotfile-update" "dotfile updater"
     echo
 
     # run to make sure config file is created for current user

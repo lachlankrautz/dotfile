@@ -64,10 +64,6 @@ ensure_file() {
     return "${SUCCESS}"
 }
 
-win_path() {
-    echo $(echo ${1} | sed "s|^${UNIX_HOME}|${WIN_HOME}|g" | sed 's|/|\\|g')
-}
-
 smart_link() {
     local GROUP="${1%/}"
     local IGNORE="${2%/}"

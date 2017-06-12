@@ -33,7 +33,11 @@ ensure_filesystem() {
 ensure_dotfiles() {
     [ -d "${config_dir}" ] || return 1;
 
-    heading "Config repo"
+    local HEADING="Config repo"
+    if [ ! -z "${git_repo}" ]; then
+        HEADING+=" (${git_repo})"
+    fi
+    heading "${HEADING}"
 
     if [ ! -d "${DOTFILES_DIR}" ] && [ ! -z "${git_repo}" ]; then
         if ! clone_repo "${git_repo}" "${repo}"; then

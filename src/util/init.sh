@@ -18,6 +18,8 @@ source_dir() {
     done
 }
 
+# word split on newline
+IFS=$'\n'
 load_lib "bashful/bin/bashful"
 load_lib "workshop/lib/workshop/dispatch.sh"
 load_lib "bash-ini-parser/bash-ini-parser"

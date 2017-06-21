@@ -48,8 +48,16 @@ load_global_variables() {
         PREVIEW=0
     fi
     local UNAME="$(uname)"
-    [ "${UNAME}" = "Linux" ] && LINUX=1 || LINUX=0
-    [[ "${OS}" =~ .*indows.* ]] && WINDOWS=1 || WINDOWS=0
+    LINUX=0
+    WINDOWS=0
+    OSX=0
+    if [ "${UNAME}" = "Linux" ]; then
+        LINUX=1
+    elif [ "${UNAME}" = "Darwin" ]; then
+        OSX=1
+    elif [[ "${UNAME}" =~ ^MINGW.*$ ]]; then
+        WINDOWS=1
+    fi
     UNIX_HOME="~"
     WIN_HOME=""
     if [ ${WINDOWS} -eq 1 ] && [ -n "${HOMEDRIVE}" ] && [ -n "${HOMEPATH}" ]; then

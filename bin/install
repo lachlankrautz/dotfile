@@ -13,17 +13,41 @@ install_dotfile() {
 
     echo
 
-    local WINDOWS=0
-    if [[ "${OS}" =~ .*indows.* ]]; then
-        SUDO_CMD=""
+    local UNAME="$(uname)"
+    LINUX=0
+    WINDOWS=0
+    OSX=0
+    if [ "${UNAME}" = "Linux" ]; then
+        LINUX=1
+    elif [ "${UNAME}" = "Darwin" ]; then
+        OSX=1
+    elif [[ "${UNAME}" =~ ^MINGW.*$ ]]; then
         WINDOWS=1
-    elif [ "${EUID}" -eq 0 ]; then
+        SUDO_CMD=""
+    fi
+
+    if [ "${EUID}" -eq 0 ]; then
         echo "Do not install as root; user home dir is needed"
         return 1
     fi
 
-    if [ ! -d /opt ]; then
-        echo "Missing install dir \"/opt\""
+    PATH_INSTALL=""
+    if [ -d "/usr/local/opt" ]; then
+        PATH_INSTALL="/usr/local/opt"
+    elif [ -d "/opt" ]; then
+        PATH_INSTALL="/opt"
+    else
+        echo "No reasonable install dir available"
+        return 1
+    fi
+
+    PATH_BIN=""
+    if [ -d "/usr/local/bin" ]; then
+        PATH_BIN="/usr/local/bin"
+    elif [ -d "/usr/bin" ]; then
+        PATH_BIN="/usr/bin"
+    else
+        echo "No reasonable bin dir available"
         return 1
     fi
 
@@ -59,23 +83,24 @@ install_dotfile() {
         return 1
     fi
 
-    if [ -d /opt/dotfile ]; then
+    if [ -d "${PATH_INSTALL}/dotfile" ]; then
         echo "Removing old version"
-        ${SUDO_CMD} rm -rf /opt/dotfile
+        ${SUDO_CMD} rm -rf "${PATH_INSTALL}/dotfile"
         if [ ! "${?}" -eq 0 ]; then
             echo "Unable to remove old version"
             return 1
         fi
     fi
 
-    echo "Moving to /opt/dotfile"
-    ${SUDO_CMD} mv /tmp/dotfile /opt
+    echo "Moving to ${PATH_INSTALL}/dotfile"
+    ${SUDO_CMD} mv /tmp/dotfile "${PATH_INSTALL}"
     if [ ! "${?}" -eq 0 ]; then
-        echo "Unable to move project to /opt"
+        echo "Unable to move project to ${PATH_INSTALL}"
         return 1
     fi
-    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/dotfile" "/usr/bin/dotfile" || return 1
-    ensure_link "${SUDO_CMD}" "/opt/dotfile/bin/install" "/usr/bin/dotfile-update" || return 1
+
+    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/dotfile" "${PATH_BIN}/dotfile" || return 1
+    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/install" "${PATH_BIN}/dotfile-update" || return 1
     echo
 
     # run to make sure config file is created for current user

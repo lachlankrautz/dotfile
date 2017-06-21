@@ -7,7 +7,7 @@ Cross platform dotfile manager supporting Linux and Windows (msys2)
 - Cross platform system links; "mklink [/D]" on Windows, "ln -s" on Linux
 - Import existing dotfile(s) into config repo
 - Backup existing files before replacing with links
-- Sync different files for different systems using repo groups (shared/windows/linux/root)
+- Sync different files for different systems using repo groups (shared/windows/osx/linux/root)
 - Preview without making changes using "-p, --preview"
 - Clean broken links on out of date system
 - Push config to remote host and sync

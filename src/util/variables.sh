@@ -100,6 +100,9 @@ update_filesystem_variables() {
     if truth "${WINDOWS}" && [ -d "${DOTFILES_DIR}/windows" ]; then
         DOTFILE_GROUPS+=("windows")
     fi
+    if truth "${OSX}" && [ -d "${DOTFILES_DIR}/osx" ]; then
+        DOTFILE_GROUPS+=("osx")
+    fi
     if truth "${LINUX}" && [ -d "${DOTFILES_DIR}/linux" ]; then
         DOTFILE_GROUPS+=("linux")
     fi

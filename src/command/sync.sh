@@ -61,6 +61,9 @@ ensure_dotfiles() {
     if truth "${LINUX}"; then
         ensure_dir "${DOTFILES_DIR}/linux" "group" || SUCCESS=1
     fi
+    if truth "${OSX}"; then
+        ensure_dir "${DOTFILES_DIR}/osx" "group" || SUCCESS=1
+    fi
     update_filesystem_variables
 
     ensure_file "${NESTING_FILE}" "nesting file" || SUCCESS=1

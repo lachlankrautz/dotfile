@@ -97,7 +97,7 @@ smart_link() {
                 echo_status "${term_fg_yellow}" "      No Backup" "${FILE_STATUS}"
                 return 1
             fi
-            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" || return 1
+            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${FILE_STATUS}" || return 1
         fi
     fi
 
@@ -188,17 +188,23 @@ heading() {
 
 backup_move() {
     local SRC="${1%/}"
-    local DEST="${2%/}"
+    local BACKUP="${2%/}"
     local FILE="${3##*/}"
+    local FILE_STATUS="${4}"
+
+    local DEST="${SRC/${HOME_DIR}/${BACKUP}}"
     local BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
 
+    if [ ! -d "${DEST}" ]; then
+        mkdir -p "${DEST}"
+    fi
     mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"
 
     local SUCCESS="${?}"
     if [ ${SUCCESS} -eq 0 ]; then
-        echo_status "${term_fg_yellow}" " Backup Created" "${BACKUP_FILE}"
+        echo_status "${term_fg_yellow}" " Backup Created" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
     else
-        echo_status "${term_fg_red}" "  Backup Failed" "${FILE}"
+        echo_status "${term_fg_red}" "  Backup Failed" "${FILE_STATUS}"
     fi
     return "${SUCCESS}"
 }

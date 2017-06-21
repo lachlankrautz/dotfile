@@ -108,8 +108,10 @@ update_filesystem_variables() {
     fi
     NESTED_DIRS=()
     if [ -f "${NESTING_FILE}" ]; then
-        readarray NESTED_DIRS < "${NESTING_FILE}"
-        NESTED_DIRS=("${NESTED_DIRS[@]//[$'\t\r\n ']}")
+        local LINE=""
+        while read LINE; do
+            NESTED_DIRS+=("${LINE//[$'\t\r\n ']}")
+        done < "${NESTING_FILE}"
     fi
 }
 

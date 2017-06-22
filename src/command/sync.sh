@@ -151,8 +151,6 @@ sync_dir() {
                 CHECKED+=("${FILE_REF}")
                 smart_link "${GROUP}" "${IGNORE}" "${SRC}" "${DEST}" "${BACKUP}" "${FILE_NAME}"
             fi
-        else
-            echo "        Ignored: ${FILE_NAME}"
         fi
     done
 }

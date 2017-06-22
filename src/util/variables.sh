@@ -85,7 +85,7 @@ load_global_variables() {
 
     BACKUP_DIR="${config_dir}/backup_home"
     ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
-    SYNC_EXCLUDE=(".git" ".gitignore")
+    SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store")
     DOTFILES_DIR="${config_dir}/${repo}"
     NESTING_FILE="${config_dir}/${repo}/nesting_list.txt"
     CHECKED=()

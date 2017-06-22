@@ -24,6 +24,9 @@ install_dotfile() {
     elif [[ "${UNAME}" =~ ^MINGW.*$ ]]; then
         WINDOWS=1
         SUDO_CMD=""
+        if [ -d "/opt" ]; then
+            mkdir "/opt"
+        fi
     fi
 
     if [ "${EUID}" -eq 0 ]; then

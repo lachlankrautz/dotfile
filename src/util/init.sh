@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
 
-load_lib() {
+if [ "${DEBUG}" -eq 1 ]; then
+    set -x
+    PS4='+ $(date "+%s.%N ($LINENO) ")'
+fi
+
+source_files_in_dir() {
     local PATH_TMP="$(pwd)"
-    local LIB_DIR="${PATH_BASE}/lib/${1%/*}"
-    local LIB_FILE="${1##*/}"
+    local LIB_DIR="${PATH_BASE}/${1}"
+    shift
 
     cd "${LIB_DIR}"
-    source "${LIB_FILE}"
-    cd "${PATH_TMP}"
-}
-
-source_dir() {
-    local PATH_COMMANDS="${1%/}"
-    local FILE=""
-    for FILE in "${PATH_COMMANDS}/"*; do
-        source "${FILE}"
+    for LIB_FILE in "${@}"; do
+        source "${LIB_FILE}"
     done
+    cd "${PATH_TMP}"
 }
 
 # word split on newline
 IFS=$'\n'
-load_lib "bashful/bin/bashful"
-load_lib "workshop/lib/workshop/dispatch.sh"
-load_lib "bash-ini-parser/bash-ini-parser"
-source "${PATH_BASE}/src/util/functions.sh"
-source "${PATH_BASE}/src/util/variables.sh"
-source_dir "${PATH_BASE}/src/command"
+source_files_in_dir "lib/bashful" \
+    "bashful-execute" \
+    "bashful-files" \
+    "bashful-input" \
+    "bashful-messages" \
+    "bashful-modes" \
+    "bashful-terminfo" \
+    "bashful-utils"
+source_files_in_dir "lib/workshop" "dispatch.sh"
+source_files_in_dir "lib/bash-ini-parser" "bash-ini-parser"
+source_files_in_dir "src/util" "functions.sh"
+source_files_in_dir "src" "clean.sh" "import.sh" "push.sh" "sync.sh"
+
 load_global_variables

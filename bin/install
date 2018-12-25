@@ -40,7 +40,7 @@ install_dotfile() {
     elif [ -d "/opt" ]; then
         PATH_INSTALL="/opt"
     else
-        echo "No reasonable install dir available"
+        echo "No suitable install dir found"
         return 1
     fi
 

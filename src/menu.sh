@@ -1,25 +1,5 @@
 #!/usr/bin/env bash
 
-usage() {
-    main_title
-    cat << EOF
-${term_fg_yellow}Usage:${term_reset}
-  dotfile [options] [command] [args]
-
-${term_fg_yellow}Options:${term_reset}
-  ${term_fg_green}-h, --help${term_reset}                   Display usage
-  ${term_fg_green}-v, --version${term_reset}                Display version
-  ${term_fg_green}-p, --preview${term_reset}                Preview changes
-
-${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}                         Sync repo groups to home
-  ${term_fg_green}import${term_reset} [<pattern>] [<group>] Import home to repo group (default "shared")
-  ${term_fg_green}push${term_reset}   [user@host]           Push config to remote host and sync
-  ${term_fg_green}clean${term_reset}                        Remove broken repo links
-
-EOF
-}
-
 dotfile_option_v() {
     dotfile_option_version
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 clean_link() {
-    PATH_BASE="${1}"
-    PREVIEW="${2}"
+    local PATH_BASE="${1}"
+    local PREVIEW="${2}"
     local FILE="${3}"
     local REPO="${4%/}"
     local LINK="$(readlink "${FILE}")"

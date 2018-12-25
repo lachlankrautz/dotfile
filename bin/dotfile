@@ -16,4 +16,4 @@ find_me() {
 find_me
 
 source "${PATH_BASE}/src/util/init.sh"
-source "${PATH_BASE}/src/main.sh"
+source "${PATH_BASE}/src/menu.sh"

@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+usage() {
+    main_title
+    cat << EOF
+${term_fg_yellow}Usage:${term_reset}
+  dotfile [options] <command> <args>
+
+${term_fg_yellow}Options:${term_reset}
+  ${term_fg_green}-h, --help${term_reset}               Display usage
+  ${term_fg_green}-v, --version${term_reset}            Display version
+  ${term_fg_green}-p, --preview${term_reset}            Preview changes
+
+${term_fg_yellow}Commands:${term_reset}
+  ${term_fg_green}sync${term_reset}                     Sync repo groups to home
+  ${term_fg_green}import${term_reset} <pattern> <group> Import home to repo group (default "shared")
+  ${term_fg_green}push${term_reset}   <user@host>       Push config to remote host and sync
+  ${term_fg_green}clean${term_reset}                    Remove broken repo links
+
+EOF
+}
+
 sudo_command() {
     local SUDO_COMMAND="${1}"; shift;
     sudo -s << EOF
@@ -169,7 +189,7 @@ dir_status() {
 
 implode() {
     local IFS="${1}"; shift;
-    echo "$*"
+    echo "${*}"
 }
 
 echo_status() {
@@ -305,13 +325,13 @@ load_global_variables() {
         LINUX=1
     elif [ "${UNAME}" = "Darwin" ]; then
         OSX=1
-    elif [[ "${UNAME}" =~ ^MINGW.*$ ]]; then
+    elif [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
         WINDOWS=1
     fi
     UNIX_HOME="~"
     WIN_HOME=""
-    if [ ${WINDOWS} -eq 1 ] && [ -n "${HOMEDRIVE}" ] && [ -n "${HOMEPATH}" ]; then
-        WIN_HOME=$(echo "${HOMEDRIVE}${HOMEPATH}" | sed 's|\\|/|g')
+    if [ "${WINDOWS}" -eq 1 ] && [ -n "${HOMEDRIVE}" ] && [ -n "${HOMEPATH}" ]; then
+        WIN_HOME="$(echo "${HOMEDRIVE}${HOMEPATH}" | sed 's|\\|/|g')"
     fi
     HOME_DIR="$(abspath "~")"
     IS_ROOT=0

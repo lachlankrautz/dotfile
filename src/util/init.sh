@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ "${DEBUG}" -eq 1 ]; then
+if [ "${DEBUG-0}" -eq 1 ]; then
     set -x
     PS4='+ $(date "+%s.%N ($LINENO) ")'
 fi
@@ -19,17 +19,10 @@ source_files_in_dir() {
 
 # word split on newline
 IFS=$'\n'
-source_files_in_dir "lib/bashful" \
-    "bashful-execute" \
-    "bashful-files" \
-    "bashful-input" \
-    "bashful-messages" \
-    "bashful-modes" \
-    "bashful-terminfo" \
-    "bashful-utils"
+source_files_in_dir "lib/bashful" "bashful"
 source_files_in_dir "lib/workshop" "dispatch.sh"
 source_files_in_dir "lib/bash-ini-parser" "bash-ini-parser"
 source_files_in_dir "src/util" "functions.sh"
-source_files_in_dir "src" "clean.sh" "import.sh" "push.sh" "sync.sh"
+source_files_in_dir "src/command" "clean.sh" "import.sh" "push.sh" "sync.sh"
 
 load_global_variables

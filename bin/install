@@ -21,7 +21,7 @@ install_dotfile() {
         LINUX=1
     elif [ "${UNAME}" = "Darwin" ]; then
         OSX=1
-    elif [[ "${UNAME}" =~ ^MINGW.*$ ]]; then
+    elif [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
         WINDOWS=1
         SUDO_CMD=""
         if [ ! -d "/opt" ]; then

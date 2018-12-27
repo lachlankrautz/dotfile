@@ -14,7 +14,6 @@ EOF
 command_sync() {
     title_sync
     ensure_filesystem
-    ensure_dotfiles
     sync_home "${BACKUP_DIR}"
     if truth "${sync_root}"; then
         sudo_command sync_home "${ROOT_BACKUP_DIR}"
@@ -22,47 +21,41 @@ command_sync() {
 }
 
 ensure_filesystem() {
-    heading "Filesystem"
-
-    ensure_dir "${config_dir}" "config dir"
-    ensure_dir "${BACKUP_DIR}" "backup dir"
-    truth "${sync_root}" && ensure_dir "${ROOT_BACKUP_DIR}" "root backup dir"
-    echo
-}
-
-ensure_dotfiles() {
-    [ -d "${config_dir}" ] || return 1;
-
-    local HEADING="Config repo"
-    if [ ! -z "${git_repo}" ]; then
-        HEADING+=" (${git_repo})"
+    local HEADING="Dotfiles"
+    if [ ! -z "${DOTFILES_REPO}" ]; then
+        HEADING+=" ${term_fg_green}${DOTFILES_REPO}${term_reset}"
+    else
+        HEADING+=" ${term_fg_green}${DOTFILES_DIR}${term_reset}"
     fi
     heading "${HEADING}"
 
-    if [ ! -d "${DOTFILES_DIR}" ] && [ ! -z "${git_repo}" ]; then
-        if ! clone_repo "${git_repo}" "${repo}"; then
+    ensure_dir "${DOTFILES_DIR}" "config"
+    ensure_dir "${BACKUP_DIR}" "backup"
+    if truth "${sync_root}"; then
+        ensure_dir "${ROOT_BACKUP_DIR}" "root backup"
+    fi
+
+    if [ ! -d "${DOTFILES_DIR}" ] && [ ! -z "${DOTFILES_DIR}" ]; then
+        if ! clone_repo "${DOTFILES_REPO}" "${DOTFILES_DIR}"; then
             echo
             return 1
         fi
     fi
+    [ -d "${DOTFILES_DIR}" ] || return 1;
 
     local SUCCESS=0
-    if ! ensure_dir "${DOTFILES_DIR}" "config repo"; then
-        echo
-        return 1
-    fi
-    ensure_dir "${DOTFILES_DIR}/shared" "group" || SUCCESS=1
+    ensure_dir "${DOTFILES_DIR}/shared" "shared group" || SUCCESS=1
     if truth "${sync_root}"; then
-        ensure_dir "${DOTFILES_DIR}/root" "group" || SUCCESS=1
+        ensure_dir "${DOTFILES_DIR}/root" "root group" || SUCCESS=1
     fi
     if truth "${WINDOWS}"; then
-        ensure_dir "${DOTFILES_DIR}/windows" "group" || SUCCESS=1
+        ensure_dir "${DOTFILES_DIR}/windows" "windows group" || SUCCESS=1
     fi
     if truth "${LINUX}"; then
-        ensure_dir "${DOTFILES_DIR}/linux" "group" || SUCCESS=1
+        ensure_dir "${DOTFILES_DIR}/linux" "linux group" || SUCCESS=1
     fi
     if truth "${OSX}"; then
-        ensure_dir "${DOTFILES_DIR}/osx" "group" || SUCCESS=1
+        ensure_dir "${DOTFILES_DIR}/osx" "osx group" || SUCCESS=1
     fi
     update_filesystem_variables
 
@@ -76,13 +69,13 @@ clone_repo() {
     local GIT_REPO="${1}"
     local NAME="${2}"
 
-    # clone into config_dir
-    local TEMP_PWD="$(pwd)"
-    cd ${config_dir}
-    git clone "${git_repo}" "${repo}" && info "Cloned ${git_repo} => ${config_dir}/${repo}"
-    local SUCCESS="${?}"
-    cd "${TEMP_PWD}"
-    return "${SUCCESS}"
+    if ! git clone "${GIT_REPO}" "${NAME}"; then
+        error "Failed to clone ${GIT_REPO}"
+        return 1
+    fi
+
+    info "Cloned ${GIT_REPO} => ${NAME}"
+    return 0
 }
 
 sync_home() {
@@ -108,12 +101,12 @@ sync_home() {
         GROUP_MESSAGE="($(implode "|" "${DOTFILE_GROUPS[@]}"))"
     fi
 
-    info "Dir summary"
+    info "Summary:"
     dir_status "           Home" "${DEST}"
-    dir_status "    Config repo" "${DOTFILES_DIR}" "/${GROUP_MESSAGE}"
+    dir_status "         Config" "${DOTFILES_DIR}" "/${GROUP_MESSAGE}"
     dir_status "         Backup" "${BACKUP}"
 
-    info "File summary"
+    info "Links:"
     local GROUP
     CHECKED=()
     for GROUP in "${DOTFILE_GROUPS[@]}"; do
@@ -138,15 +131,12 @@ sync_dir() {
     local FILE_REF
     local FILE_NAME
     for FILE in $(listdir "${SRC}"); do
-
         FILE_REF="$(echo "${FILE/${DOTFILES_DIR}\/${GROUP}\//}" | lower)"
         FILE_NAME="${FILE##*/}"
 
         if ! in_array "${FILE_NAME}" "${SYNC_EXCLUDE[@]}"; then
-
             if [ -d "${FILE}" ] && nested_dir "${FILE}"; then
                 sync_dir "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME}" "${BACKUP}"
-
             elif ! in_array "${FILE_REF}" "${CHECKED[@]}"; then
                 CHECKED+=("${FILE_REF}")
                 smart_link "${GROUP}" "${IGNORE}" "${SRC}" "${DEST}" "${BACKUP}" "${FILE_NAME}"

@@ -130,6 +130,7 @@ ensure_link() {
     echo "Checking executable: ${NAME}"
     local NEED_LINK=0
     local LINK="$(readlink "${DEST}")"
+
     if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
         NEED_LINK=1
         echo "Existing link points elsewhere, removing"

@@ -12,12 +12,28 @@ ${term_fg_yellow}Options:${term_reset}
   ${term_fg_green}-p, --preview${term_reset}            Preview changes
 
 ${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}                     Sync repo groups to home
-  ${term_fg_green}import${term_reset} <pattern> <group> Import home to repo group (default "shared")
-  ${term_fg_green}push${term_reset}   <user@host>       Push config to remote host and sync
-  ${term_fg_green}clean${term_reset}                    Remove broken repo links
+  ${term_fg_green}sync${term_reset}                       Sync repo groups to home
+  ${term_fg_green}import${term_reset} <pattern> <group>   Import file into config group (default "shared")
+  ${term_fg_green}export${term_reset} <pattern> <group>   Export file back out of config group (default "shared")
+  ${term_fg_green}remote${term_reset} <user@host>         Install on remote host
+  ${term_fg_green}clean${term_reset}                      Remove broken repo links
+  ${term_fg_green}update${term_reset}                     Update remote config
 
 EOF
+}
+
+cdd() {
+    cd "${1}" || die "Unable to cd to ${1}"
+}
+
+# BSD and GNU sed required different params
+sedi() {
+    if sed --version >/dev/null 2>&1; then
+        sed -i "${@}"
+    else
+        sed -i '' "${@}"
+    fi
+    return "${?}"
 }
 
 sudo_command() {
@@ -49,7 +65,7 @@ ensure_dir() {
         return 1
     fi
     if [ -d "${DIR}" ]; then
-        info "Confirmed ${MESSAGE}"
+        info "Found ${MESSAGE}"
         return 0
     fi
     mkdir -p "${DIR}"
@@ -71,7 +87,7 @@ ensure_file() {
         return 1
     fi
     if [ -f "${FILE}" ]; then
-        info "Confirmed ${MESSAGE}"
+        info "Found ${MESSAGE}"
         return 0
     fi
     touch "${FILE}"
@@ -96,16 +112,23 @@ smart_link() {
     local DEST_FILE="${DEST}/${FILE_NAME}"
     local FILE_STATUS="${DEST_FILE/${IGNORE}\//}"
 
-    if [ ! -z "${GROUP}" ] && [ ! "${GROUP}" = "shared" ]; then
+    if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
+        if truth "${PREVIEW}"; then
+            echo_status "${term_fg_red}" "    Broken Link" "${FILE_STATUS}"
+            return 1
+        else
+            rm "${DEST_FILE}"
+        fi
+    fi
+
+    if [ -n "${GROUP}" ] && [ ! "${GROUP}" = "shared" ]; then
         FILE_STATUS="${FILE_STATUS} (${GROUP})"
     fi
 
     if [ -L "${DEST_FILE}" ]; then
         echo_status "${term_fg_green}" "         Linked" "${FILE_STATUS}"
         return 0
-
     elif [ -e "${DEST_FILE}" ]; then
-
         if truth "${PREVIEW}"; then
             local BACKUP_COLOUR="${term_fg_yellow}"
             if [ ! -d "${BACKUP}" ]; then
@@ -270,47 +293,6 @@ main_title() {
 EOF
 }
 
-# Establish global variables from config files and system
-#
-# From lib:
-#   TIMESTAMP
-#   term_fg_red
-#   term_fg_yellow
-#   term_fg_green
-#   term_fg_white
-#   term_fg_blue
-#   term_bold
-#   term_reset
-#
-# From config:
-#   config_dir
-#   repo
-#   git_repo
-#   sync_root
-#
-# From system:
-#   PATH_BASE
-#   VERSION
-#   HELP
-#   PREVIEW
-#   UNIX_HOME
-#   WIN_HOME
-#   OS
-#   WINDOWS
-#   LINUX
-#   HOME_DIR
-#   IS_ROOT
-#   HOMEDRIVE
-#   HOMEPATH
-#   BACKUP_DIR
-#   ROOT_BACKUP_DIR
-#   SYNC_EXCLUDE
-#   DOTFILES_DIR
-#   DOTFILE_GROUPS
-#   TRUE_HOME_DIR
-#   NESTING_FILE
-#   NESTED_DIRS
-
 load_global_variables() {
     VERSION="1.6.1"
     HELP=0
@@ -348,16 +330,12 @@ load_global_variables() {
 
     ensure_config
 
-    config_dir="${config_dir%/}"
-    if [ ! -z "${TRUE_HOME_DIR}" ]; then
-        config_dir="${config_dir/~/${TRUE_HOME_DIR}}"
-    fi
-
-    BACKUP_DIR="${config_dir}/backup_home"
-    ROOT_BACKUP_DIR="${config_dir}/root_backup_home"
+    BACKUP_DIR="~/.config/dotfile/backup_home"
+    ROOT_BACKUP_DIR="~/.config/root_backup_home"
     SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store")
-    DOTFILES_DIR="${config_dir}/${repo}"
-    NESTING_FILE="${config_dir}/${repo}/nesting_list.txt"
+    DOTFILES_DIR="$(abspath "${config_dir}")"
+    NESTING_FILE="${DOTFILES_DIR}/nesting_list.txt"
+    DOTFILES_REPO="${config_repo}"
     CHECKED=()
     update_filesystem_variables
 }
@@ -422,25 +400,19 @@ create_config() {
     if [ -z "${config_dir}" ]; then
         config_dir="~/config"
     fi
-    if [ -z "${repo}" ]; then
-        repo="my-config"
-    fi
-    if [ -z "${git_repo}" ]; then
-        git_repo=""
+    if [ -z "${config_repo}" ]; then
+        config_repo=""
     fi
 
     cat << EOF >> ${FILE}
 [dotfile]
-;;; dir for config repo(s) and backups
+;;; dir to clone config repo to
 config_dir=${config_dir}
 
-;;; selected config repo in config_dir
-repo=${repo}
+;;; config repo address
+config_repo=${config_repo}
 
-;;; config repo address to clone into config_dir (optional)
-git_repo=${git_repo}
-
-;;; sync dotfiles to /root
+;;; sync dotfiles to root
 sync_root=0
 EOF
     sync

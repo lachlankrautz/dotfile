@@ -3,7 +3,6 @@
 - tries to link file inside linked dir (.docker (osx), .docker/config.json (shared)) tries to do both
 - bad error message on import inside already linked dir
 - poor visibility on status dir vs file
-- unclear if relative paths required from cwd or home
 
 # Features
 

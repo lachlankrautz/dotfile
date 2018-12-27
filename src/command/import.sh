@@ -14,38 +14,34 @@ EOF
 }
 
 command_import() {
-    local FILE="${1}"
-    local SUB_DIR="${2}"
-    if [ -z "${SUB_DIR}" ]; then
-        SUB_DIR="shared"
-    fi
+    local PATTERN="${1##*/}"
+    local SEARCH_DIR_PART="${1/${PATTERN}/}"
+    local GROUP="${2-shared}"
+    local SEARCH_DIR
+    SEARCH_DIR="$(abspath "${HOME}/$(relpath "${SEARCH_DIR_PART}" "${HOME}")")"
 
     title_import
 
-    if [ -z "${FILE}" ]; then
+    if [ -z "${PATTERN}" ]; then
         echo "Missing file pattern"
         echo
-    else
-        import_dotfiles_pattern "${FILE}" "${SUB_DIR}"
+        return 1
     fi
-    local SUCCESS="${?}"
-    return "${SUCCESS}"
+
+    cdd "${HOME}"
+    import_dotfiles_pattern "${SEARCH_DIR}" "${PATTERN}" "${GROUP}"
+    return "${?}"
 }
 
 import_dotfiles_pattern() {
-    local PATTERN="${1##*/}"
-    local SEARCH_DIR="${1%/*}"
-    local GROUP="${2}"
-    local MESSAGE="'${PATTERN}'"
-    if [ "${PATTERN}" = "${SEARCH_DIR}" ]; then
-        SEARCH_DIR=""
-    else
-        MESSAGE="${SEARCH_DIR} ${MESSAGE}"
-    fi
+    local SEARCH_DIR="${1}"
+    local PATTERN="${2}"
+    local GROUP="${3}"
 
-    info "Import ${MESSAGE} into ${repo}"
-    local DOTFILES=($(find "${HOME_DIR%/}/${SEARCH_DIR#/}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
-    if [ "${#DOTFILES[@]}" -eq 0 ]; then
+    info "Import ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${GROUP}${term_reset}"
+
+    local DOTFILE_LIST=($(find "${SEARCH_DIR}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
+    if [ "${#DOTFILE_LIST[@]}" -eq 0 ]; then
         warn "No files matching pattern: ${PATTERN}"
         echo
         return 1
@@ -57,7 +53,7 @@ import_dotfiles_pattern() {
     fi
 
     local DOTFILE
-    for DOTFILE in "${DOTFILES[@]}"; do
+    for DOTFILE in "${DOTFILE_LIST[@]}"; do
         import_dotfile "${GROUP}" "${DOTFILE}"
     done
 
@@ -95,12 +91,12 @@ import_dotfile() {
         ensure_nested_dir "${GROUP}" "${DOTFILE_DIR}" || return 1
     fi
 
-    if mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
-        echo_status "${term_fg_green}" "       Imported" "${FILE_REF}"
-        smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILE_DIR}" "${IMPORT_DIR}" "${BACKUP_DIR}" "${IMPORT_NAME}"
-        return 0
-    else
+    if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
         echo_status "${term_fg_red}" "  Import failed" "${FILE_REF}"
         return 1
     fi
+
+    echo_status "${term_fg_green}" "       Imported" "${FILE_REF}"
+    smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILE_DIR}" "${IMPORT_DIR}" "${BACKUP_DIR}" "${IMPORT_NAME}"
+    return "${?}"
 }

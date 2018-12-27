@@ -1,33 +1,26 @@
 #!/usr/bin/env bash
 
-title_push() {
-    doc_title << 'EOF'
-                        __
-      ____  __  _______/ /
-     / __ \/ / / / ___/ __ \
-    / /_/ / /_/ (__  ) / / /
-   / .___/\__,_/____/_/ /_/
-  /_/
-
-EOF
-    return 0
-}
-
-command_push() {
+command_remote() {
     local SSH_HOST="${1}"
-
-    title_push
 
     # Validate request
     if [ -z "${SSH_HOST}" ]; then
         error "Missing host"
         return 1
     fi
-    if [ -z "${config_dir}" ]; then
+    if [ -z "${DOTFILES_DIR}" ]; then
         error "Missing config dir"
         return 1
     fi
-    if [ -z "${repo}" ]; then
+    local DOTFILES_CONTAINING_DIR
+    DOTFILES_CONTAINING_DIR="$(dirname "${DOTFILES_DIR}")"
+    if [ ! -d "${DOTFILES_CONTAINING_DIR}" ]; then
+        mkdir -p "${DOTFILES_CONTAINING_DIR}" || {
+            error "Unable to create dir: ${DOTFILES_CONTAINING_DIR}"
+            return 1
+        }
+    fi
+    if [ -z "${DOTFILES_REPO}" ]; then
         error "Missing repo"
         return 1
     fi
@@ -46,7 +39,7 @@ command_push() {
     fi
 
     info "Creating config archive"
-    tar -zcvf "${ZIP_FILE}" -C "${config_dir}" "${repo}" > /dev/null
+    tar -zcvf "${ZIP_FILE}" -C "${DOTFILES_CONTAINING_DIR}" "${DOTFILES_DIR}" > /dev/null
     if [ ! "${?}" -eq 0 ] || [ ! -f "${ZIP_FILE}" ]; then
         error "Unable to create config archive"
         return 1
@@ -67,29 +60,28 @@ command_push() {
     fi
 
     local TILDE="~"
-    local TMP_CONFIG_DIR="${config_dir/${TRUE_HOME_DIR}/${TILDE}}"
+    local TMP_CONFIG_DIR="${DOTFILES_DIR/${TRUE_HOME_DIR}/${TILDE}}"
 
     info "Running script on ${SSH_HOST}"
     ssh -T "${SSH_HOST}" << EOF
 export TERM=xterm
 export config_dir="${TMP_CONFIG_DIR}"
-export repo="${repo}"
-export git_repo="${git_repo}"
+export config_repo="${DOTFILES_REPO}"
 
 if [ ! -f "${ZIP_FILE}" ]; then
     echo "Config archive missing"
     exit 1
 fi
 
-if [ ! -d "${TMP_CONFIG_DIR}" ]; then
-    mkdir -p "${TMP_CONFIG_DIR}"
+if [ ! -d "${DOTFILES_CONTAINING_DIR}" ]; then
+    mkdir -p "${DOTFILES_CONTAINING_DIR}"
 fi
-if [ -d "${TMP_CONFIG_DIR}/${repo}" ]; then
+if [ -d "${TMP_CONFIG_DIR}" ]; then
     echo "Clearing old config repo"
-    rm -rf "${TMP_CONFIG_DIR}/${repo}"
+    rm -rf "${TMP_CONFIG_DIR}"
 fi
 
-tar xvfz "${ZIP_FILE}" -C "${config_dir}" > /dev/null
+tar xvfz "${ZIP_FILE}" -C "${DOTFILES_CONTAINING_DIR}" > /dev/null
 if [ -f "${ZIP_FILE}" ]; then
     rm "${ZIP_FILE}"
 fi

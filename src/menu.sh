@@ -36,6 +36,10 @@ dotfile_command_clean() {
     fi
 }
 
+dotfile_command_config() {
+    command_config_sync "${@}"
+}
+
 dotfile_command_sync() {
     if [ ${HELP} = 0 ]; then
         command_sync
@@ -52,9 +56,26 @@ dotfile_command_import() {
     fi
 }
 
-dotfile_command_push() {
+dotfile_command_export() {
     if [ ${HELP} = 0 ]; then
-        command_push "$@"
+        command_export "$@"
+    else
+        dispatch dotfile "$@"
+    fi
+}
+
+dotfile_command_remote() {
+    if [ ${HELP} = 0 ]; then
+        command_remote "$@"
+        echo
+    else
+        dispatch dotfile "$@"
+    fi
+}
+
+dotfile_command_update() {
+    if [ ${HELP} = 0 ]; then
+        command_update "$@"
         echo
     else
         dispatch dotfile "$@"

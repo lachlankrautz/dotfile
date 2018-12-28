@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+title_remote() {
+    doc_title << 'EOF'
+                                __
+     ________  ____ ___  ____  / /____
+    / ___/ _ \/ __ `__ \/ __ \/ __/ _ \
+   / /  /  __/ / / / / / /_/ / /_/  __/
+  /_/   \___/_/ /_/ /_/\____/\__/\___/
+
+EOF
+    return 0
+}
+
 command_remote() {
     local SSH_HOST="${1}"
 
@@ -12,6 +24,9 @@ command_remote() {
         error "Missing config dir"
         return 1
     fi
+
+    title_remote
+
     local DOTFILES_CONTAINING_DIR
     DOTFILES_CONTAINING_DIR="$(dirname "${DOTFILES_DIR}")"
     if [ ! -d "${DOTFILES_CONTAINING_DIR}" ]; then

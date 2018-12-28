@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+main_title() {
+    doc_title << 'EOF'
+         __      __  _____ __
+    ____/ /___  / /_/ __(_) /__
+   / __  / __ \/ __/ /_/ / / _ \
+  / /_/ / /_/ / /_/ __/ / /  __/
+  \__,_/\____/\__/_/ /_/_/\___/
+
+EOF
+}
+
 usage() {
     main_title
     cat << EOF
@@ -34,6 +45,14 @@ sedi() {
         sed -i '' "${@}"
     fi
     return "${?}"
+}
+
+dotfile_git() {
+    cdd "${DOTFILES_DIR}"
+    git ${@}
+    local STATUS="${?}"
+    cdd - > /dev/null
+    return "${STATUS}"
 }
 
 sudo_command() {
@@ -100,6 +119,14 @@ ensure_file() {
     return "${SUCCESS}"
 }
 
+# Create a link in a "smart" way
+#
+# - check for existing link
+# - remove broken links
+# - move existing file to backup dir
+# - use `mklink` or `ln -s` depending on platform
+# - support "preview" mode
+#
 smart_link() {
     local GROUP="${1%/}"
     local IGNORE="${2%/}"
@@ -112,54 +139,58 @@ smart_link() {
     local DEST_FILE="${DEST}/${FILE_NAME}"
     local FILE_STATUS="${DEST_FILE/${IGNORE}\//}"
 
-    if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
-        if truth "${PREVIEW}"; then
-            echo_status "${term_fg_red}" "    Broken Link" "${FILE_STATUS}"
-            return 1
-        else
-            rm "${DEST_FILE}"
-        fi
-    fi
-
+    # Add group suffix to status
     if [ -n "${GROUP}" ] && [ ! "${GROUP}" = "shared" ]; then
         FILE_STATUS="${FILE_STATUS} (${GROUP})"
     fi
 
-    if [ -L "${DEST_FILE}" ]; then
-        echo_status "${term_fg_green}" "         Linked" "${FILE_STATUS}"
-        return 0
-    elif [ -e "${DEST_FILE}" ]; then
+    # Link exists but doesn't point to the right file
+    if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
         if truth "${PREVIEW}"; then
-            local BACKUP_COLOUR="${term_fg_yellow}"
-            if [ ! -d "${BACKUP}" ]; then
-                BACKUP_COLOUR="${term_fg_red}"
-            fi
-            echo_status "${BACKUP_COLOUR}" "Backup Required" "${FILE_STATUS}"
+            echo_status "${term_fg_red}" "  Broken" "${FILE_STATUS}"
+            return 1
         else
-            if [ ! -d "${BACKUP}" ]; then
-                echo_status "${term_fg_yellow}" "      No Backup" "${FILE_STATUS}"
-                return 1
-            fi
+            # Remove bad link
+            rm "${DEST_FILE}"
+        fi
+    fi
+
+    # Already linked
+    if [ -L "${DEST_FILE}" ]; then
+        echo_status "${term_fg_green}" "  Linked" "${FILE_STATUS}"
+        return 0
+    fi
+
+    # File already exists and needs to be backed up
+    if [ -e "${DEST_FILE}" ]; then
+        if [ ! -d "${BACKUP}" ]; then
+            error "Missing backup dir"
+            return 1
+        fi
+
+        if truth "${PREVIEW}"; then
+            echo_status "${term_fg_yellow}" "  Backup" "${FILE_STATUS}"
+        else
             backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${FILE_STATUS}" || return 1
         fi
     fi
 
+    # Preview
     if truth "${PREVIEW}"; then
         local COLOUR="${term_fg_white}"
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_yellow}"
         fi
-        echo_status "${COLOUR}" "  Link Required" "${FILE_STATUS}"
+        echo_status "${COLOUR}" "    Link" "${FILE_STATUS}"
         return 0
     fi
-    if [ ! -d "${DEST}" ]; then
-        mkdir -p "${DEST}"
-        if [ ! -d "${DEST}" ]; then
-            echo_status "${term_fg_red}" "    Link Failed" "${FILE_STATUS}"
-            return 1
-        fi
+
+    if [ ! -d "${DEST}" ] && ! mkdir -p "${DEST}"; then
+        echo_status "${term_fg_red}" "  Failed" "${FILE_STATUS}"
+        return 1
     fi
 
+    # Create link and save status
     if [ "${WINDOWS}" -eq 1 ]; then
         [ -d "${SRC_FILE}" ] && OPT="/D " || OPT=""
 
@@ -173,60 +204,14 @@ smart_link() {
         # Unix link attempt
         ln -s "${SRC_FILE}" "${DEST_FILE}" > /dev/null 2>&1
     fi
+    local STATUS="${?}"
 
-    # must be next command after the link attempt to catch the process result
-    if [ "${?}" -eq 0 ]; then
-        echo_status "${term_fg_green}" "   Link Created" "${FILE_STATUS}"
-        return 0
+    if [ "${STATUS}" -eq 0 ]; then
+        echo_status "${term_fg_green}" " Created" "${FILE_STATUS}"
     else
-        echo_status "${term_fg_red}" "    Link failed" "${FILE_STATUS}"
-        return 1
+        echo_status "${term_fg_red}" "  Failed" "${FILE_STATUS}"
     fi
-}
-
-doc_title() {
-    local LINE=""
-    echo -n "${term_bold}${term_fg_blue}"
-    while read -r LINE; do
-        echo "${LINE}"
-    done;
-    echo -n "${term_reset}"
-}
-
-dir_status() {
-    local TITLE="${1}"
-    local DIR="${2}"
-    local EXTRA="${3}"
-
-    local COLOUR=""
-    if [ -z "${DIR}" ]; then
-        COLOUR="${term_fg_yellow}"
-        DIR="path not set"
-    elif [ -d "${DIR}" ] || [ -L "${DIR}" ]; then
-        COLOUR="${term_fg_green}"
-    else
-        COLOUR="${term_fg_red}"
-    fi
-    echo_status "${COLOUR}" "${TITLE}" "${DIR}${EXTRA}"
-}
-
-implode() {
-    local IFS="${1}"; shift;
-    echo "${*}"
-}
-
-echo_status() {
-    local COLOUR="${1}"
-    local TITLE="${2}"
-    local MESSAGE="${3}"
-    local TILDE="~"
-    echo "${TITLE}: ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
-}
-
-heading() {
-    local MESSAGE="${1}"
-    local TILDE="~"
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    return "${STATUS}"
 }
 
 backup_move() {
@@ -239,58 +224,62 @@ backup_move() {
     local BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
 
     if [ ! -d "${DEST}" ]; then
-        mkdir -p "${DEST}"
+        if ! mkdir -p "${DEST}"; then
+            error "Unable to create backup dir ${DEST}"
+            return 1
+        fi
     fi
-    mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"
 
-    local SUCCESS="${?}"
-    if [ ${SUCCESS} -eq 0 ]; then
-        echo_status "${term_fg_yellow}" " Backup Created" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
-    else
-        echo_status "${term_fg_red}" "  Backup Failed" "${FILE_STATUS}"
+    # Move to backup dir
+    if ! mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"; then
+        echo_status "${term_fg_red}" "  Backup" "${FILE_STATUS}"
+        return 1
     fi
-    return "${SUCCESS}"
+
+    echo_status "${term_fg_green}" "  Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
 }
 
-nested_dir() {
+# Is this a nested dir
+#
+# - should not sync dir
+# - should sync contents
+# - marked by containing an ignore file
+#
+is_nested_dir() {
     local DIR="${1%/}"
     if [ ! -d "${DIR}" ]; then
         return 1
     fi
-    DIR="${DIR//${DOTFILES_DIR}\//}"
-    for NESTED in "${NESTED_DIRS[@]}"; do
-        if [ "${DIR}" = "${NESTED}" ]; then
-            return 0
-        fi
-    done
-    return 1
+
+    if [ ! -f "${DIR}/${DOTFILE_IGNORE}" ]; then
+        return 1
+    fi
+
+    return 0
 }
 
 ensure_nested_dir() {
     local GROUP="${1}"
     local DIR="${2%/}"
-    local DIR_REF="${DIR//${DOTFILES_DIR}\//}"
+    local IGNORE_FILE="${DIR}/${DOTFILE_IGNORE}"
 
-    if [ ! -d "${DIR}" ]; then
-        mkdir -p "${DIR}" || return 1
+    if [ ! -d "${DIR}" ] && ! mkdir -p "${DIR}"; then
+        error "Unable to create nested dir: ${DIR}"
+        return 1
     fi
 
-    if ! nested_dir "${DIR}"; then
-        echo "${DIR_REF}" >> "${NESTING_FILE}" || return 1
-        update_filesystem_variables
+    if [ ! -f "${IGNORE_FILE}" ]; then
+        if ! touch "${IGNORE_FILE}"; then
+            error "Unable to create ${IGNORE_FILE}"
+            return 1
+        fi
+        if ! dotfile_git add "${IGNORE_FILE}"; then
+            error "Unable to add ${IGNORE_FILE} to git"
+            return 1
+        fi
     fi
+
     return 0
-}
-
-main_title() {
-    doc_title << 'EOF'
-         __      __  _____ __
-    ____/ /___  / /_/ __(_) /__
-   / __  / __ \/ __/ /_/ / / _ \
-  / /_/ / /_/ / /_/ __/ / /  __/
-  \__,_/\____/\__/_/ /_/_/\___/
-
-EOF
 }
 
 load_global_variables() {
@@ -330,13 +319,14 @@ load_global_variables() {
 
     ensure_config
 
-    BACKUP_DIR="~/.config/dotfile/backup_home"
-    ROOT_BACKUP_DIR="~/.config/root_backup_home"
-    SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store")
+    DOTFILE_IGNORE=".dotfileignore"
+    BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_home"
+    ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/root_backup_home"
+    SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store" "${DOTFILE_IGNORE}")
     DOTFILES_DIR="$(abspath "${config_dir}")"
-    NESTING_FILE="${DOTFILES_DIR}/nesting_list.txt"
     DOTFILES_REPO="${config_repo}"
     CHECKED=()
+
     update_filesystem_variables
 }
 
@@ -356,13 +346,6 @@ update_filesystem_variables() {
     fi
     if [ -d "${DOTFILES_DIR}/shared" ]; then
         DOTFILE_GROUPS+=("shared")
-    fi
-    NESTED_DIRS=()
-    if [ -f "${NESTING_FILE}" ]; then
-        local LINE=""
-        while read LINE; do
-            NESTED_DIRS+=("${LINE//[$'\t\r\n ']}")
-        done < "${NESTING_FILE}"
     fi
 }
 
@@ -416,4 +399,49 @@ config_repo=${config_repo}
 sync_root=0
 EOF
     sync
+}
+
+doc_title() {
+    local LINE=""
+    echo -n "${term_bold}${term_fg_blue}"
+    while read -r LINE; do
+        echo "${LINE}"
+    done;
+    echo -n "${term_reset}"
+}
+
+dir_status() {
+    local TITLE="${1}"
+    local DIR="${2}"
+    local EXTRA="${3}"
+
+    local COLOUR=""
+    if [ -z "${DIR}" ]; then
+        COLOUR="${term_fg_yellow}"
+        DIR="path not set"
+    elif [ -d "${DIR}" ] || [ -L "${DIR}" ]; then
+        COLOUR="${term_fg_green}"
+    else
+        COLOUR="${term_fg_red}"
+    fi
+    echo_status "${COLOUR}" "${TITLE}" "${DIR}${EXTRA}"
+}
+
+implode() {
+    local IFS="${1}"; shift;
+    echo "${*}"
+}
+
+echo_status() {
+    local COLOUR="${1}"
+    local TITLE="${2}"
+    local MESSAGE="${3}"
+    local TILDE="~"
+    echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+}
+
+heading() {
+    local MESSAGE="${1}"
+    local TILDE="~"
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
 }

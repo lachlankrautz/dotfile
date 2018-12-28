@@ -2,7 +2,12 @@
 
 title_export() {
     doc_title << 'EOF'
-EXPORT
+                                __
+    ___  _  ______  ____  _____/ /_
+   / _ \| |/_/ __ \/ __ \/ ___/ __/
+  /  __/>  </ /_/ / /_/ / /  / /_
+  \___/_/|_/ .___/\____/_/   \__/
+          /_/
 
 EOF
     return 0
@@ -12,7 +17,7 @@ command_export() {
     local PATTERN="${1##*/}"
     local SEARCH_DIR_PART="${1/${PATTERN}/}"
     local SEARCH_DIR
-    SEARCH_DIR="$(abspath "${HOME}/$(relpath "${SEARCH_DIR_PART}" "${HOME}")")"
+    SEARCH_DIR="$(abspath "${HOME_DIR}/$(relpath "${SEARCH_DIR_PART}" "${HOME_DIR}")")"
 
     title_export
 
@@ -22,19 +27,23 @@ command_export() {
         return 1
     fi
 
-    cdd "${HOME}"
-    export_dotfiles_pattern "${SEARCH_DIR}" "${PATTERN}" "${GROUP}"
-    return "${?}"
-    echo "exporting ..."
+    info "Export ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${GROUP}${term_reset}"
+
+    local DOTFILE_LIST=($(find "${SEARCH_DIR}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
+    if [ "${#DOTFILE_LIST[@]}" -eq 0 ]; then
+        warn "No files matching pattern: ${PATTERN}"
+        echo
+        return 1
+    fi
+
+    local DOTFILE
+    for DOTFILE in "${DOTFILE_LIST[@]}"; do
+        import_dotfile "${GROUP}" "${DOTFILE}"
+    done
 
     echo
-    return 0
 }
 
-export_dotfiles_pattern() {
-    local SEARCH_DIR="${1}"
-    local PATTERN="${2}"
-    local GROUP="${3}"
-
-    info "Export ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${GROUP}${term_reset}"
+export_dotfile() {
+    :
 }

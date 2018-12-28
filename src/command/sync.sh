@@ -29,10 +29,10 @@ ensure_filesystem() {
     fi
     heading "${HEADING}"
 
-    ensure_dir "${DOTFILES_DIR}" "config"
-    ensure_dir "${BACKUP_DIR}" "backup"
+    ensure_dir "${DOTFILES_DIR}" "config" || return 1
+    ensure_dir "${BACKUP_DIR}" "backup" || return 1
     if truth "${sync_root}"; then
-        ensure_dir "${ROOT_BACKUP_DIR}" "root backup"
+        ensure_dir "${ROOT_BACKUP_DIR}" "root backup" || return 1
     fi
 
     if [ ! -d "${DOTFILES_DIR}" ] && [ ! -z "${DOTFILES_DIR}" ]; then
@@ -58,10 +58,8 @@ ensure_filesystem() {
         ensure_dir "${DOTFILES_DIR}/osx" "osx group" || SUCCESS=1
     fi
     update_filesystem_variables
-
-    ensure_file "${NESTING_FILE}" "nesting file" || SUCCESS=1
-
     echo
+
     return "${SUCCESS}"
 }
 
@@ -94,23 +92,10 @@ sync_home() {
         return 1
     fi
 
-    local GROUP_MESSAGE
-    if [ "${#DOTFILE_GROUPS[@]}" = 1 ]; then
-        GROUP_MESSAGE="${DOTFILE_GROUPS}"
-    else
-        GROUP_MESSAGE="($(implode "|" "${DOTFILE_GROUPS[@]}"))"
-    fi
-
-    info "Summary:"
-    dir_status "           Home" "${DEST}"
-    dir_status "         Config" "${DOTFILES_DIR}" "/${GROUP_MESSAGE}"
-    dir_status "         Backup" "${BACKUP}"
-
-    info "Links:"
     local GROUP
     CHECKED=()
     for GROUP in "${DOTFILE_GROUPS[@]}"; do
-        sync_dir "${GROUP}" "${DEST}" "${DOTFILES_DIR}/${GROUP}" "${DEST}" "${BACKUP}"
+        sync_dir_recursive "${GROUP}" "${DEST}" "${DOTFILES_DIR}/${GROUP}" "${DEST}" "${BACKUP}"
     done
     if [ "${#CHECKED[@]}" -eq 0 ]; then
         info "No files in config repo, get started with \"dotfile import\""
@@ -120,7 +105,7 @@ sync_home() {
     return 0
 }
 
-sync_dir() {
+sync_dir_recursive() {
     local GROUP="${1%/}"
     local IGNORE="${2%/}"
     local SRC="${3%/}"
@@ -135,8 +120,8 @@ sync_dir() {
         FILE_NAME="${FILE##*/}"
 
         if ! in_array "${FILE_NAME}" "${SYNC_EXCLUDE[@]}"; then
-            if [ -d "${FILE}" ] && nested_dir "${FILE}"; then
-                sync_dir "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME}" "${BACKUP}"
+            if is_nested_dir "${FILE}"; then
+                sync_dir_recursive "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME}" "${BACKUP}"
             elif ! in_array "${FILE_REF}" "${CHECKED[@]}"; then
                 CHECKED+=("${FILE_REF}")
                 smart_link "${GROUP}" "${IGNORE}" "${SRC}" "${DEST}" "${BACKUP}" "${FILE_NAME}"

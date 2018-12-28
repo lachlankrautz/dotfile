@@ -18,7 +18,7 @@ command_import() {
     local SEARCH_DIR_PART="${1/${PATTERN}/}"
     local GROUP="${2-shared}"
     local SEARCH_DIR
-    SEARCH_DIR="$(abspath "${HOME}/$(relpath "${SEARCH_DIR_PART}" "${HOME}")")"
+    SEARCH_DIR="$(abspath "${HOME_DIR}/$(relpath "${SEARCH_DIR_PART}" "${HOME_DIR}")")"
 
     title_import
 
@@ -27,16 +27,6 @@ command_import() {
         echo
         return 1
     fi
-
-    cdd "${HOME}"
-    import_dotfiles_pattern "${SEARCH_DIR}" "${PATTERN}" "${GROUP}"
-    return "${?}"
-}
-
-import_dotfiles_pattern() {
-    local SEARCH_DIR="${1}"
-    local PATTERN="${2}"
-    local GROUP="${3}"
 
     info "Import ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${GROUP}${term_reset}"
 
@@ -70,20 +60,20 @@ import_dotfile() {
     local DOTFILE_DIR="${DOTFILE_PATH%/*}"
 
     if [ ! -e "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" " Import missing" "${FILE_REF}"
+        echo_status "${term_fg_red}" " Missing" "${FILE_REF}"
         return 1
     fi
     if [ -e "${DOTFILE_PATH}" ]; then
-        echo_status "${term_fg_green}" "       Imported" "${FILE_REF}"
+        echo_status "${term_fg_green}" "Imported" "${FILE_REF}"
         return 1
     fi
     if [ -L "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" " Import is link" "${FILE_REF}"
+        echo_status "${term_fg_red}" "    Link" "${FILE_REF}"
         return 1
     fi
 
     if truth "${PREVIEW}"; then
-        echo_status "${term_fg_white}" "Import required" "${FILE_REF}"
+        echo_status "${term_fg_white}" "  Import" "${FILE_REF}"
         return 0
     fi
 
@@ -92,11 +82,15 @@ import_dotfile() {
     fi
 
     if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
-        echo_status "${term_fg_red}" "  Import failed" "${FILE_REF}"
+        echo_status "${term_fg_red}" "  Failed" "${FILE_REF}"
         return 1
     fi
 
-    echo_status "${term_fg_green}" "       Imported" "${FILE_REF}"
-    smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILE_DIR}" "${IMPORT_DIR}" "${BACKUP_DIR}" "${IMPORT_NAME}"
-    return "${?}"
+    if ! smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILE_DIR}" "${IMPORT_DIR}" \
+            "${BACKUP_DIR}" "${IMPORT_NAME}" > /dev/null; then
+        return 1
+    fi
+    echo_status "${term_fg_green}" "Imported" "${FILE_REF}"
+
+    dotfile_git add "${DOTFILE_PATH}"
 }

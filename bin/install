@@ -21,7 +21,7 @@ install_dotfile() {
         LINUX=1
     elif [ "${UNAME}" = "Darwin" ]; then
         OSX=1
-    elif [[ "${UNAME}" =~ ^MINGW.*$ ]]; then
+    elif [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
         WINDOWS=1
         SUDO_CMD=""
         if [ ! -d "/opt" ]; then
@@ -40,7 +40,7 @@ install_dotfile() {
     elif [ -d "/opt" ]; then
         PATH_INSTALL="/opt"
     else
-        echo "No reasonable install dir available"
+        echo "No suitable install dir found"
         return 1
     fi
 
@@ -130,6 +130,7 @@ ensure_link() {
     echo "Checking executable: ${NAME}"
     local NEED_LINK=0
     local LINK="$(readlink "${DEST}")"
+
     if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
         NEED_LINK=1
         echo "Existing link points elsewhere, removing"

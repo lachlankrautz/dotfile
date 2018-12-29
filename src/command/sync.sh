@@ -11,7 +11,7 @@ title_sync() {
 EOF
 }
 
-command_sync() {
+dotfile_command_sync() {
     title_sync
     ensure_filesystem
     sync_home "${BACKUP_DIR}"
@@ -21,6 +21,11 @@ command_sync() {
 }
 
 ensure_filesystem() {
+    if truth "${PREVIEW}"; then
+        info "Preview"
+        echo
+    fi
+
     local HEADING="Dotfiles"
     if [ ! -z "${DOTFILES_REPO}" ]; then
         HEADING+=" ${term_fg_green}${DOTFILES_REPO}${term_reset}"

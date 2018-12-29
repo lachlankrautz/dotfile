@@ -18,17 +18,16 @@ ${term_fg_yellow}Usage:${term_reset}
   dotfile [options] <command> <args>
 
 ${term_fg_yellow}Options:${term_reset}
-  ${term_fg_green}-h, --help${term_reset}               Display usage
+  ${term_fg_green}-h, --help${term_reset}               Display general usage or command help
   ${term_fg_green}-v, --version${term_reset}            Display version
-  ${term_fg_green}-p, --preview${term_reset}            Preview changes
+  ${term_fg_green}-p, --preview${term_reset}            Preview changes without writing
 
 ${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}                       Sync repo groups to home
-  ${term_fg_green}import${term_reset} <pattern> <group>   Import file into config group (default "shared")
-  ${term_fg_green}export${term_reset} <pattern> <group>   Export file back out of config group (default "shared")
-  ${term_fg_green}remote${term_reset} <user@host>         Install on remote host
-  ${term_fg_green}clean${term_reset}                      Remove broken repo links
-  ${term_fg_green}update${term_reset}                     Update remote config
+  ${term_fg_green}sync${term_reset}                     Sync repo groups to home
+  ${term_fg_green}import${term_reset} <pattern> <group> Import file into config group (default "shared")
+  ${term_fg_green}export${term_reset} <pattern>         Export file back out of config
+  ${term_fg_green}remote${term_reset} <user@host>       Install on remote host
+  ${term_fg_green}update${term_reset}                   Update remote config
 
 EOF
 }
@@ -49,10 +48,30 @@ sedi() {
 
 dotfile_git() {
     cdd "${DOTFILES_DIR}"
-    git ${@}
+    git "${@}"
     local STATUS="${?}"
     cdd - > /dev/null
     return "${STATUS}"
+}
+
+dotfile_git_add() {
+    local TO_ADD="${1}"
+    local IGNORE_RULES
+    if ! dotfile_git add "${TO_ADD}"; then
+        error "Failed to stage ${TO_ADD} in git"
+
+        # Check if failed because of ignore rules
+        IGNORE_RULES="$(dotfile_git check-ignore -v "${TO_ADD}")"
+        if [ -n "${IGNORE_RULES}" ]; then
+            echo
+            info "File ignored by git"
+            echo "${IGNORE_RULES}"
+        fi
+
+        return 1
+    fi
+
+    return 0
 }
 
 sudo_command() {
@@ -286,26 +305,95 @@ is_nested_dir() {
     return 0
 }
 
+# Create deep dir structure with ignore files for nesting
 ensure_nested_dir() {
     local GROUP="${1}"
     local DIR="${2%/}"
-    local IGNORE_FILE="${DIR}/${DOTFILE_IGNORE}"
+    local IGNORE_FILE
 
     if [ ! -d "${DIR}" ] && ! mkdir -p "${DIR}"; then
         error "Unable to create nested dir: ${DIR}"
         return 1
     fi
 
-    if [ ! -f "${IGNORE_FILE}" ]; then
-        if ! touch "${IGNORE_FILE}"; then
-            error "Unable to create ${IGNORE_FILE}"
-            return 1
+    local CURRENT_DIR
+    local END_DIR="${DOTFILES_DIR}/${GROUP}"
+
+    cdd "${DIR}"
+    CURRENT_DIR="$(pwd)"
+    while [ "${CURRENT_DIR}" != "${END_DIR}" ]; do
+        IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_IGNORE}"
+        if [ ! -f "${IGNORE_FILE}" ]; then
+            if ! touch "${IGNORE_FILE}"; then
+                error "Unable to create ${IGNORE_FILE}"
+                return 1
+            fi
+            dotfile_git_add "${IGNORE_FILE}" || return 1
         fi
-        if ! dotfile_git add "${IGNORE_FILE}"; then
-            error "Unable to add ${IGNORE_FILE} to git"
-            return 1
-        fi
+
+        cdd ..
+        CURRENT_DIR="$(pwd)"
+    done
+
+    return 0
+}
+
+cleanup_nested_dir() {
+    local DOTFILE_GROUP_DIR="${1%/}"
+    local EXPORT_DIR="${2%/}"
+    local NESTED_DIR
+
+    if [ -z "${DOTFILE_GROUP_DIR}" ]; then
+        error "Missing dotfile group dir param"
+        return 1
     fi
+
+    if [ ! -d "${DOTFILE_GROUP_DIR}" ]; then
+        error "Dotfile group dir must be a directory: ${DOTFILE_GROUP_DIR}"
+        return 1
+    fi
+
+    if [ -z "${EXPORT_DIR}" ]; then
+        error "Missing export dir param"
+        return 1
+    fi
+
+    if [ ! -d "${EXPORT_DIR}" ]; then
+        error "Export dir must be a directory: ${EXPORT_DIR}"
+        return 1
+    fi
+
+    cdd "${EXPORT_DIR}"
+    NESTED_DIR="$(pwd)"
+    while [ "${NESTED_DIR}" != "${DOTFILE_GROUP_DIR}" ]; do
+        IGNORE_FILE="${NESTED_DIR}/${DOTFILE_IGNORE}"
+
+        # Not a nested dir
+        if [ ! -f "${IGNORE_FILE}" ]; then
+            break
+        fi
+
+        # Still has dotfiles
+        while IFS= read -r -d $'\0'; do
+            if [ "${REPLY}" != "${IGNORE_FILE}" ]; then
+                break 2
+            fi
+        done < <(listdir "${NESTED_DIR}" -print0)
+
+        if ! rm "${IGNORE_FILE}"; then
+            error "Failed to remove ${IGNORE_FILE}"
+            return 1
+        fi
+
+        # Leave dir, delete it, reset NESTED_DIR
+        cdd ..
+        if ! rmdir "${NESTED_DIR}"; then
+            error "Failed to remove ${NESTED_DIR}"
+            return 1
+        fi
+        dotfile_git_add "${NESTED_DIR}" || return 1
+        NESTED_DIR="$(pwd)"
+    done
 
     return 0
 }

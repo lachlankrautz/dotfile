@@ -13,7 +13,7 @@ EOF
     return 0
 }
 
-command_update() {
+dotfile_command_update() {
     title_update
 
     if ! dotfile_git diff-index --quiet HEAD --; then
@@ -27,7 +27,18 @@ command_update() {
         dotfile_git commit -p || return 1
     fi
 
-    info "Updating ${DOTFILES_REPO}"
+    heading "Updating ${DOTFILES_REPO}"
+    echo
+
+    info "git pull --rebase"
     dotfile_git pull --rebase
+    echo
+
+    info "git push"
     dotfile_git push
+    echo
+
+    info "git status"
+    dotfile_git status
+    echo
 }

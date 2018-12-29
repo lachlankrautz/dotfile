@@ -12,7 +12,7 @@ EOF
     return 0
 }
 
-command_remote() {
+dotfile_command_remote() {
     local SSH_HOST="${1}"
 
     # Validate request

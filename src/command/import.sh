@@ -13,9 +13,10 @@ EOF
     return 0
 }
 
-command_import() {
-    local PATTERN="${1##*/}"
-    local SEARCH_DIR_PART="${1/${PATTERN}/}"
+dotfile_command_import() {
+    local INPUT="${1%/}"
+    local PATTERN="${INPUT##*/}"
+    local SEARCH_DIR_PART="${INPUT/${PATTERN}/}"
     local GROUP="${2-shared}"
     local SEARCH_DIR
     SEARCH_DIR="$(abspath "${HOME_DIR}/$(relpath "${SEARCH_DIR_PART}" "${HOME_DIR}")")"
@@ -34,9 +35,18 @@ command_import() {
         return 1
     fi
 
-    info "Import ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${GROUP}${term_reset}"
+    if truth "${PREVIEW}"; then
+        info "Preview"
+        echo
+    fi
 
-    local DOTFILE_LIST=($(find "${SEARCH_DIR}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
+    heading "Import ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${GROUP}${term_reset}"
+
+    local DOTFILE_LIST=()
+    while IFS= read -r -d $'\0'; do
+        DOTFILE_LIST+=("${REPLY}")
+    done < <(listdir "${SEARCH_DIR}" -name "${PATTERN}" -print0)
+
     if [ "${#DOTFILE_LIST[@]}" -eq 0 ]; then
         warn "No files matching pattern: ${PATTERN}"
         echo
@@ -83,7 +93,7 @@ import_dotfile() {
         return 0
     fi
 
-    if [ ! "${HOME_DIR}" = "${IMPORT_DIR}" ]; then
+    if [ "${HOME_DIR}" != "${IMPORT_DIR}" ]; then
         ensure_nested_dir "${GROUP}" "${DOTFILE_DIR}" || return 1
     fi
 
@@ -98,5 +108,5 @@ import_dotfile() {
     fi
     echo_status "${term_fg_green}" "Imported" "${FILE_REF}"
 
-    dotfile_git add "${DOTFILE_PATH}"
+    dotfile_git_add "${DOTFILE_PATH}"
 }

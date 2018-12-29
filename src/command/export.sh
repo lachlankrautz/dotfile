@@ -13,11 +13,12 @@ EOF
     return 0
 }
 
-command_export() {
-    local PATTERN="${1##*/}"
+dotfile_command_export() {
+    local INPUT="${1%/}"
+    local PATTERN="${INPUT##*/}"
     local SEARCH_DIR_PART="${1/${PATTERN}/}"
     local SEARCH_DIR
-    SEARCH_DIR="$(abspath "${DOTFILES_DIR}/$(relpath "${SEARCH_DIR_PART}" "${DOTFILES_DIR}")")"
+    SEARCH_DIR="$(abspath "${HOME_DIR}/$(relpath "${SEARCH_DIR_PART}" "${HOME_DIR}")")"
 
     title_export
 
@@ -27,15 +28,24 @@ command_export() {
         return 1
     fi
 
-    if [ "$(commonpath "${DOTFILES_DIR}" "${SEARCH_DIR}")" != "${DOTFILES_DIR}" ]; then
-        error "Pattern must point to files inside ${DOTFILES_DIR}"
+    if [ "$(commonpath "${HOME_DIR}" "${SEARCH_DIR}")" != "${HOME_DIR}" ]; then
+        error "Pattern must point to files inside ${HOME_DIR}"
         echo
         return 1
     fi
 
-    info "Export ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset}"
+    if truth "${PREVIEW}"; then
+        info "Preview"
+        echo
+    fi
 
-    local DOTFILE_LIST=($(find "${SEARCH_DIR}" -maxdepth 1 -mindepth 1 -name "${PATTERN}"))
+    heading "Export ${term_fg_blue}${SEARCH_DIR}/${PATTERN}${term_reset}"
+
+    local DOTFILE_LIST=()
+    while IFS= read -r -d $'\0'; do
+        DOTFILE_LIST+=("${REPLY}")
+    done < <(listdir "${SEARCH_DIR}" -name "${PATTERN}" -print0)
+
     if [ "${#DOTFILE_LIST[@]}" -eq 0 ]; then
         warn "No files matching pattern: ${PATTERN}"
         echo
@@ -54,32 +64,59 @@ command_export() {
 
 export_dotfile() {
     local EXPORT_FILE="${1}"
+    local REPO_DIR
+    local REPO_FILE
     local FILE_REF
 
     if [ ! -e "${EXPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" "File" "${EXPORT_FILE}"
+        echo_status "${term_fg_red}" "Missing" "${EXPORT_FILE}"
         return 1
     fi
 
-    FILE_REF="$(file_ref "${EXPORT_FILE}")" || return 1
-    local HOME_FILE="${HOME_DIR}/${FILE_REF}"
-    if [ ! -L "${HOME_FILE}" ]; then
-        echo_status "${term_fg_red}" "Missing" "${FILE_REF}"
+    if [ ! -L "${EXPORT_FILE}" ]; then
+        echo_status "${term_fg_green}" "Restored" "${EXPORT_FILE}"
         return 1
     fi
 
-    if ! rm "${HOME_FILE}"; then
-        error "Failed to remove link ${HOME_FILE}"
-        return 1
-    fi
-    if ! mv "${EXPORT_FILE}" "${HOME_FILE}"; then
-        error "Failed to restore ${HOME_FILE}"
-        return 1
-    fi
-    if ! dotfile_git add "${EXPORT_FILE}"; then
-        error "Failed to add ${EXPORT_FILE} to git"
-        return 1
+    if truth "${PREVIEW}"; then
+        echo_status "${term_fg_white}" "Export" "${EXPORT_FILE}"
+        return 0
     fi
 
-    echo_status "${term_fg_green}" "Restored" "${FILE_REF}"
+    REPO_FILE="$(readlink "${EXPORT_FILE}")"
+    if [ -z "${REPO_FILE}" ]; then
+        error "Missing linked file for ${EXPORT_FILE}"
+        return 1
+    fi
+    if [ "$(commonpath "${DOTFILES_DIR}" "${REPO_FILE}")" != "${DOTFILES_DIR}" ]; then
+        error "Link must point to file inside ${DOTFILES_DIR}: ${REPO_FILE}"
+        echo
+        return 1
+    fi
+    FILE_REF="$(file_ref "${REPO_FILE}")"
+    local DOTFILE_GROUP_DIR="${REPO_FILE/\/${FILE_REF}/}"
+    REPO_DIR="${REPO_FILE%/*}"
+
+    # echo "export file: ${EXPORT_FILE}"
+    # echo "repo_file: ${REPO_FILE}"
+    # echo "repo dir: ${REPO_DIR}"
+    # echo "dotfile group dir: ${DOTFILE_GROUP_DIR}"
+    # return 0
+
+
+    if ! rm "${EXPORT_FILE}"; then
+        error "Failed to remove link ${EXPORT_FILE}"
+        return 1
+    fi
+    if ! mv "${REPO_FILE}" "${EXPORT_FILE}"; then
+        error "Failed to restore ${EXPORT_FILE}"
+        return 1
+    fi
+    dotfile_git_add "${REPO_FILE}" || return 1
+
+    if [ "${DOTFILE_GROUP_DIR}" != "${REPO_DIR}" ]; then
+        cleanup_nested_dir "${DOTFILE_GROUP_DIR}" "${REPO_DIR}" || return 1
+    fi
+
+    echo_status "${term_fg_green}" "Restored" "${EXPORT_FILE}"
 }

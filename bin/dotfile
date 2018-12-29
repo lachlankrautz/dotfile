@@ -15,5 +15,9 @@ find_me() {
 }
 find_me
 
-source "${PATH_BASE}/src/util/init.sh"
+source "${PATH_BASE}/src/init.sh"
 source "${PATH_BASE}/src/menu.sh"
+
+ensure_not_root
+dispatch dotfile "$@"
+exit "${?}"

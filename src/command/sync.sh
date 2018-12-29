@@ -29,14 +29,15 @@ ensure_filesystem() {
     fi
     heading "${HEADING}"
 
-    ensure_dir "${DOTFILES_DIR}" "config" || return 1
-    ensure_dir "${BACKUP_DIR}" "backup" || return 1
+    display_ensure_dir "${DOTFILES_DIR}" "config" || return 1
+    display_ensure_dir "${BACKUP_DIR}" "backup" || return 1
     if truth "${sync_root}"; then
-        ensure_dir "${ROOT_BACKUP_DIR}" "root backup" || return 1
+        display_ensure_dir "${ROOT_BACKUP_DIR}" "root backup" || return 1
     fi
 
     if [ ! -d "${DOTFILES_DIR}" ] && [ ! -z "${DOTFILES_DIR}" ]; then
         if ! clone_repo "${DOTFILES_REPO}" "${DOTFILES_DIR}"; then
+            error "Failed to clone ${DOTFILES_REPO}"
             echo
             return 1
         fi
@@ -44,20 +45,10 @@ ensure_filesystem() {
     [ -d "${DOTFILES_DIR}" ] || return 1;
 
     local SUCCESS=0
-    ensure_dir "${DOTFILES_DIR}/shared" "shared group" || SUCCESS=1
-    if truth "${sync_root}"; then
-        ensure_dir "${DOTFILES_DIR}/root" "root group" || SUCCESS=1
-    fi
-    if truth "${WINDOWS}"; then
-        ensure_dir "${DOTFILES_DIR}/windows" "windows group" || SUCCESS=1
-    fi
-    if truth "${LINUX}"; then
-        ensure_dir "${DOTFILES_DIR}/linux" "linux group" || SUCCESS=1
-    fi
-    if truth "${OSX}"; then
-        ensure_dir "${DOTFILES_DIR}/osx" "osx group" || SUCCESS=1
-    fi
-    update_filesystem_variables
+    local DOTFILE_GROUP
+    for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        display_ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" "${DOTFILE_GROUP} group" || SUCCESS=1
+    done
     echo
 
     return "${SUCCESS}"
@@ -87,14 +78,14 @@ sync_home() {
     fi
     heading "Sync ${DEST}"
 
-    if [ "${#DOTFILE_GROUPS[@]}" = 0 ]; then
+    if [ "${#DOTFILE_GROUP_LIST[@]}" = 0 ]; then
         echo "No repo groups available"
         return 1
     fi
 
     local GROUP
     CHECKED=()
-    for GROUP in "${DOTFILE_GROUPS[@]}"; do
+    for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         sync_dir_recursive "${GROUP}" "${DEST}" "${DOTFILES_DIR}/${GROUP}" "${DEST}" "${BACKUP}"
     done
     if [ "${#CHECKED[@]}" -eq 0 ]; then

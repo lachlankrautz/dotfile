@@ -61,7 +61,7 @@ sudo_command() {
 PATH_BASE="${PATH_BASE}"
 TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
 PREVIEW="${PREVIEW}"
-source "${PATH_BASE}/src/util/init.sh"
+source "${PATH_BASE}/src/init.sh"
 ${SUDO_COMMAND} "${@}"
 EOF
 }
@@ -75,26 +75,54 @@ ensure_not_root() {
     fi
 }
 
-ensure_dir() {
+display_ensure_dir() {
     local DIR="${1}"
     local NAME="${2}"
     local MESSAGE="${NAME} ${DIR}"
+
     if [ -z "${DIR}" ]; then
-        warn "${NAME} path not set"
+        error "Dir param not set"
         return 1
     fi
+
+    if [ -z "${NAME}" ]; then
+        error "Name param not set"
+        return 1
+    fi
+
     if [ -d "${DIR}" ]; then
         info "Found ${MESSAGE}"
         return 0
     fi
-    mkdir -p "${DIR}"
+
+    ensure_dir "${DIR}"
     local SUCCESS="${?}"
+
     if [ "${SUCCESS}" -eq 0 ]; then
         info "Created ${MESSAGE}"
-    else
-        warn "Failed to create ${MESSAGE}"
     fi
+
     return "${SUCCESS}"
+}
+
+ensure_dir() {
+    local DIR="${1}"
+
+    if [ -z "${DIR}" ]; then
+        error "Dir param not set"
+        return 1
+    fi
+
+    if [ -d "${DIR}" ]; then
+        return 0
+    fi
+
+    if ! mkdir -p "${DIR}"; then
+        error "Failed to create ${DIR}"
+        return 1
+    fi
+
+    return 0
 }
 
 ensure_file() {
@@ -147,7 +175,7 @@ smart_link() {
     # Link exists but doesn't point to the right file
     if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
         if truth "${PREVIEW}"; then
-            echo_status "${term_fg_red}" "  Broken" "${FILE_STATUS}"
+            echo_status "${term_fg_red}" "Broken" "${FILE_STATUS}"
             return 1
         else
             # Remove bad link
@@ -157,7 +185,7 @@ smart_link() {
 
     # Already linked
     if [ -L "${DEST_FILE}" ]; then
-        echo_status "${term_fg_green}" "  Linked" "${FILE_STATUS}"
+        echo_status "${term_fg_green}" "Linked" "${FILE_STATUS}"
         return 0
     fi
 
@@ -169,7 +197,7 @@ smart_link() {
         fi
 
         if truth "${PREVIEW}"; then
-            echo_status "${term_fg_yellow}" "  Backup" "${FILE_STATUS}"
+            echo_status "${term_fg_yellow}" "Backup" "${FILE_STATUS}"
         else
             backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${FILE_STATUS}" || return 1
         fi
@@ -181,12 +209,12 @@ smart_link() {
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_yellow}"
         fi
-        echo_status "${COLOUR}" "    Link" "${FILE_STATUS}"
+        echo_status "${COLOUR}" "Link" "${FILE_STATUS}"
         return 0
     fi
 
     if [ ! -d "${DEST}" ] && ! mkdir -p "${DEST}"; then
-        echo_status "${term_fg_red}" "  Failed" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "Failed" "${FILE_STATUS}"
         return 1
     fi
 
@@ -207,9 +235,9 @@ smart_link() {
     local STATUS="${?}"
 
     if [ "${STATUS}" -eq 0 ]; then
-        echo_status "${term_fg_green}" " Created" "${FILE_STATUS}"
+        echo_status "${term_fg_green}" "Created" "${FILE_STATUS}"
     else
-        echo_status "${term_fg_red}" "  Failed" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "Failed" "${FILE_STATUS}"
     fi
     return "${STATUS}"
 }
@@ -232,11 +260,11 @@ backup_move() {
 
     # Move to backup dir
     if ! mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"; then
-        echo_status "${term_fg_red}" "  Backup" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "Backup" "${FILE_STATUS}"
         return 1
     fi
 
-    echo_status "${term_fg_green}" "  Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
+    echo_status "${term_fg_green}" "Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
 }
 
 # Is this a nested dir
@@ -283,11 +311,15 @@ ensure_nested_dir() {
 }
 
 load_global_variables() {
-    VERSION="1.6.1"
+    VERSION="2.0.0"
+
+    # Runtime settings
     HELP=0
     if ! truth "${PREVIEW}";  then
         PREVIEW=0
     fi
+
+    # Platform
     local UNAME="$(uname)"
     LINUX=0
     WINDOWS=0
@@ -299,11 +331,8 @@ load_global_variables() {
     elif [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
         WINDOWS=1
     fi
-    UNIX_HOME="~"
-    WIN_HOME=""
-    if [ "${WINDOWS}" -eq 1 ] && [ -n "${HOMEDRIVE}" ] && [ -n "${HOMEPATH}" ]; then
-        WIN_HOME="$(echo "${HOMEDRIVE}${HOMEPATH}" | sed 's|\\|/|g')"
-    fi
+
+    # Home dirs
     HOME_DIR="$(abspath "~")"
     IS_ROOT=0
     if truth "${LINUX}" && [ "${EUID}" -eq 0 ]; then
@@ -317,8 +346,8 @@ load_global_variables() {
         TRUE_HOME_DIR="${HOME_DIR}"
     fi
 
-    ensure_config
-
+    # Depends on loaded config
+    ensure_config || return 1
     DOTFILE_IGNORE=".dotfileignore"
     BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_home"
     ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/root_backup_home"
@@ -327,26 +356,19 @@ load_global_variables() {
     DOTFILES_REPO="${config_repo}"
     CHECKED=()
 
-    update_filesystem_variables
-}
+    # Dotfile groups
+    # Order is important
+    DOTFILE_GROUP_LIST=()
+    truth "${IS_ROOT}" && DOTFILE_GROUP_LIST+=("root")
+    truth "${WINDOWS}" && DOTFILE_GROUP_LIST+=("windows")
+    truth "${OSX}" && DOTFILE_GROUP_LIST+=("osx")
+    truth "${LINUX}" && DOTFILE_GROUP_LIST+=("linux")
+    DOTFILE_GROUP_LIST+=("shared")
 
-update_filesystem_variables() {
-    DOTFILE_GROUPS=()
-    if truth "${IS_ROOT}" && [ -d "${DOTFILES_DIR}/root" ]; then
-        DOTFILE_GROUPS+=("root")
-    fi
-    if truth "${WINDOWS}" && [ -d "${DOTFILES_DIR}/windows" ]; then
-        DOTFILE_GROUPS+=("windows")
-    fi
-    if truth "${OSX}" && [ -d "${DOTFILES_DIR}/osx" ]; then
-        DOTFILE_GROUPS+=("osx")
-    fi
-    if truth "${LINUX}" && [ -d "${DOTFILES_DIR}/linux" ]; then
-        DOTFILE_GROUPS+=("linux")
-    fi
-    if [ -d "${DOTFILES_DIR}/shared" ]; then
-        DOTFILE_GROUPS+=("shared")
-    fi
+    local DOTFILE_GROUP
+    for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" || return 1
+    done
 }
 
 ensure_config() {
@@ -401,6 +423,20 @@ EOF
     sync
 }
 
+file_ref() {
+    local FILE_REF_PATH="${1}"
+    if [ -z "${FILE_REF_PATH}" ]; then
+        error "Missing file ref param"
+        return 1
+    fi
+
+    local DOTFILE_GROUP_PATTERN
+    DOTFILE_GROUP_PATTERN="${DOTFILES_DIR}/($(implode "|" "${DOTFILE_GROUP_LIST[@]}"))/" || return 1
+    local ESCAPED_PATTERN="${DOTFILE_GROUP_PATTERN//\//\\/}"
+
+    echo "${FILE_REF_PATH}" | sed -E 's/'"${ESCAPED_PATTERN}"'//g'
+}
+
 doc_title() {
     local LINE=""
     echo -n "${term_bold}${term_fg_blue}"
@@ -432,12 +468,32 @@ implode() {
     echo "${*}"
 }
 
+lpad() {
+    local STRING="${1}"
+    local LENGTH="${2}"
+
+    if [ -z "${STRING}" ]; then
+        error "Missing string param"
+        return 1
+    fi
+
+    if [ -z "${LENGTH}" ]; then
+        error "Missing length param"
+        return 1
+    fi
+
+    local FILLER="                                                     "
+    local PAD_LENGTH
+    PAD_LENGTH=$(("${LENGTH}" - "${#STRING}"))
+    echo "${FILLER:0:${PAD_LENGTH}}${STRING}"
+}
+
 echo_status() {
     local COLOUR="${1}"
     local TITLE="${2}"
     local MESSAGE="${3}"
     local TILDE="~"
-    echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    echo "$(lpad "${TITLE}" 10) ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
 }
 
 heading() {

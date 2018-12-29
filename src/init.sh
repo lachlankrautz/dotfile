@@ -37,7 +37,7 @@ source_files_in_dir "lib/bashful" \
 
 source_files_in_dir "lib/workshop" "dispatch.sh"
 source_files_in_dir "lib/bash-ini-parser" "bash-ini-parser"
-source_files_in_dir "src/util" "functions.sh"
+source_files_in_dir "src" "functions.sh"
 source_files_in_dir "src/command" \
     "clean.sh" \
     "import.sh" \
@@ -46,4 +46,4 @@ source_files_in_dir "src/command" \
     "sync.sh" \
     "update.sh"
 
-load_global_variables
+load_global_variables || exit 1

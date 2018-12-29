@@ -17,7 +17,7 @@ clean_link() {
     fi
 
     if [[ "${LINK}" =~ ^${REPO} ]] && [ ! -e "${LINK}" ]; then
-        source "${PATH_BASE}/src/util/init.sh"
+        source "${PATH_BASE}/src/init.sh"
         local FILE_DESC="${term_bold}${term_fg_red} -> ${LINK}${term_reset}"
         if [ "${PREVIEW}" -eq 1 ]; then
             dir_status "         Remove" "${FILE}" "${FILE_DESC}"

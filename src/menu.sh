@@ -91,7 +91,3 @@ dotfile_call_() {
 dotfile_() {
     usage
 }
-
-ensure_not_root
-dispatch dotfile "$@"
-exit 0

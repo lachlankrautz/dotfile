@@ -23,7 +23,13 @@ command_import() {
     title_import
 
     if [ -z "${PATTERN}" ]; then
-        echo "Missing file pattern"
+        error "Missing file pattern"
+        echo
+        return 1
+    fi
+
+    if [ "$(commonpath "${HOME_DIR}" "${SEARCH_DIR}")" != "${HOME_DIR}" ]; then
+        error "Pattern must point to files inside ${HOME_DIR}"
         echo
         return 1
     fi
@@ -60,7 +66,7 @@ import_dotfile() {
     local DOTFILE_DIR="${DOTFILE_PATH%/*}"
 
     if [ ! -e "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" " Missing" "${FILE_REF}"
+        echo_status "${term_fg_red}" "Missing" "${FILE_REF}"
         return 1
     fi
     if [ -e "${DOTFILE_PATH}" ]; then
@@ -68,12 +74,12 @@ import_dotfile() {
         return 1
     fi
     if [ -L "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" "    Link" "${FILE_REF}"
+        echo_status "${term_fg_red}" "Link" "${FILE_REF}"
         return 1
     fi
 
     if truth "${PREVIEW}"; then
-        echo_status "${term_fg_white}" "  Import" "${FILE_REF}"
+        echo_status "${term_fg_white}" "Import" "${FILE_REF}"
         return 0
     fi
 
@@ -82,7 +88,7 @@ import_dotfile() {
     fi
 
     if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
-        echo_status "${term_fg_red}" "  Failed" "${FILE_REF}"
+        echo_status "${term_fg_red}" "Failed" "${FILE_REF}"
         return 1
     fi
 

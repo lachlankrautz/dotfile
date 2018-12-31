@@ -69,17 +69,17 @@ export_dotfile() {
     local FILE_REF
 
     if [ ! -e "${EXPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" "Missing" "${EXPORT_FILE}"
+        echo_status "${term_fg_red}" "   Missing" "${EXPORT_FILE}"
         return 1
     fi
 
     if [ ! -L "${EXPORT_FILE}" ]; then
-        echo_status "${term_fg_green}" "Restored" "${EXPORT_FILE}"
+        echo_status "${term_fg_green}" "  Restored" "${EXPORT_FILE}"
         return 1
     fi
 
     if truth "${PREVIEW}"; then
-        echo_status "${term_fg_white}" "Export" "${EXPORT_FILE}"
+        echo_status "${term_fg_white}" "    Export" "${EXPORT_FILE}"
         return 0
     fi
 
@@ -97,13 +97,6 @@ export_dotfile() {
     local DOTFILE_GROUP_DIR="${REPO_FILE/\/${FILE_REF}/}"
     REPO_DIR="${REPO_FILE%/*}"
 
-    # echo "export file: ${EXPORT_FILE}"
-    # echo "repo_file: ${REPO_FILE}"
-    # echo "repo dir: ${REPO_DIR}"
-    # echo "dotfile group dir: ${DOTFILE_GROUP_DIR}"
-    # return 0
-
-
     if ! rm "${EXPORT_FILE}"; then
         error "Failed to remove link ${EXPORT_FILE}"
         return 1
@@ -118,5 +111,5 @@ export_dotfile() {
         cleanup_nested_dir "${DOTFILE_GROUP_DIR}" "${REPO_DIR}" || return 1
     fi
 
-    echo_status "${term_fg_green}" "Restored" "${EXPORT_FILE}"
+    echo_status "${term_fg_green}" "  Restored" "${EXPORT_FILE}"
 }

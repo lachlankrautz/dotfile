@@ -12,14 +12,14 @@ EOF
 }
 
 dotfile_command_sync() {
-    # title_sync
-    # display_ensure_filesystem
+    title_sync
+    display_ensure_filesystem
     sync_config_to_home "${BACKUP_DIR}"
-    # truth "${sync_root}" && sudo_command sync_config_to_home "${ROOT_BACKUP_DIR}"
+    [ "${sync_root}" -eq 1 ] && sudo_command sync_config_to_home "${ROOT_BACKUP_DIR}"
 }
 
 display_ensure_filesystem() {
-    if truth "${PREVIEW}"; then
+    if [ "${PREVIEW}" -eq 1 ]; then
         info "Preview"
         echo
     fi
@@ -30,7 +30,7 @@ display_ensure_filesystem() {
 
     display_ensure_dir "${DOTFILES_DIR}" "config" || return 1
     display_ensure_dir "${BACKUP_DIR}" "backup" || return 1
-    truth "${sync_root}" && {
+    [ "${sync_root}" -eq 1 ] && {
         display_ensure_dir "${ROOT_BACKUP_DIR}" "root backup" || return 1;
     }
 
@@ -64,9 +64,13 @@ ensure_dotfiles_dir() {
 }
 
 sync_config_to_home() {
-    local BACKUP="${1%/}"
+    local BACKUP_DIR="${1%/}"
     local DEST_DIR
-    truth "${IS_ROOT}" && DEST_DIR="/root" || DEST_DIR="${HOME_DIR}"
+    [ "${IS_ROOT}" -eq 1 ] && DEST_DIR="/root" || DEST_DIR="${HOME_DIR}"
+    local GROUP
+    local SRC_DIR
+    local EXCLUDE_NAMES=()
+    local EXCLUDE_PATHS=()
 
     heading "Sync ${DEST_DIR}"
 
@@ -75,85 +79,39 @@ sync_config_to_home() {
         return 1
     fi
 
-    # Spin through groups syncing files
-    # Skip files handled by a previous group
-    local GROUP
-
-    # WARNING: Global mutable variable
-    HANDLED_FILE_LIST=()
-
-    for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
-        # sync_dir_recursive "${GROUP}" "${DEST_DIR}" "${DOTFILES_DIR}/${GROUP}" "${DEST_DIR}" "${BACKUP}"
-        sync_config_group_to_dir "${GROUP}" "${DEST_DIR}" "${BACKUP_DIR}"
+    local SYNC_EXCLUDE
+    for SYNC_EXCLUDE in "${SYNC_EXCLUDE_LIST[@]}"; do
+        EXCLUDE_NAMES+=(-not -name "${SYNC_EXCLUDE}")
     done
 
-    if [ "${#HANDLED_FILE_LIST[@]}" -eq 0 ]; then
+    # Spin through groups syncing files
+    # Skip files handled by a previous group
+    for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        SRC_DIR="${DOTFILES_DIR}/${GROUP}"
+        cdd "${SRC_DIR}"
+
+        while read -r -d $'\0' FILE; do
+            # Skip dir containing a `${DOTFILE_MARKER}`
+            if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
+                continue
+            fi
+
+            # Skip file unless dir contains a `${DOTFILE_MARKER}`
+            if [ -f "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
+                continue
+            fi
+
+            # Make sure we don't match this file again in another group
+            EXCLUDE_PATHS+=(-not -path "${FILE}")
+
+            smart_link "${GROUP}" "${SRC_DIR}" "${DEST_DIR}" "${BACKUP_DIR}" "${FILE/.\//}"
+        done < <(find . -mindepth 1 "${EXCLUDE_NAMES[@]}" "${EXCLUDE_PATHS[@]}" -print0)
+    done
+
+    if [ "${#EXCLUDE_PATHS[@]}" -eq 0 ]; then
         info "No files in config repo, get started with \"dotfile import\""
     fi
     echo
 
     return 0
-}
-
-sync_config_group_to_dir() {
-    local GROUP="${1}"
-    local SRC_DIR="${DOTFILES_DIR}/${GROUP}"
-    local DEST_DIR="${2%/}"
-    local BACKUP_DIR="${3%/}"
-    local FILE
-    local FILE_REF
-    local STATUS=0
-
-    local FIND_ARGS=(
-        "${SRC_DIR}"
-        -mindepth 1
-        -not -name ".git"
-        -not -name ".gitignore"
-        -not -name ".DS_Store"
-        -not -name ".thumbs.db"
-        -not -name "${DOTFILE_MARKER}"
-        -print0
-    )
-    while read -r -d $'\0' FILE; do
-        # Skip dir containing a `${DOTFILE_MARKER}`
-        if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
-            continue
-        fi
-
-        # Skip file unless dir contains a `${DOTFILE_MARKER}`
-        if [ -f "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
-            continue
-        fi
-
-        FILE_REF="${FILE/${SRC_DIR}\//}"
-        smart_link "${GROUP}" "${SRC_DIR}" "${DEST_DIR}" "${BACKUP_DIR}" "${FILE_REF}"
-    done < <(find "${FIND_ARGS[@]}")
-
-    return "${STATUS}"
-}
-
-sync_dir_recursive() {
-    local GROUP="${1%/}"
-    # TODO wrong name for variable ignore?
-    local IGNORE="${2%/}"
-    local SRC="${3%/}"
-    local DEST="${4%/}"
-    local BACKUP="${5%/}"
-
-    local FILE
-    local FILE_REF
-    local FILE_NAME
-    for FILE in $(listdir "${SRC}"); do
-        FILE_REF="$(echo "${FILE/${DOTFILES_DIR}\/${GROUP}\//}" | lower)"
-        FILE_NAME="${FILE##*/}"
-
-        if ! in_array "${FILE_NAME}" "${SYNC_EXCLUDE[@]}"; then
-            if is_nested_dir "${FILE}"; then
-                sync_dir_recursive "${GROUP}" "${IGNORE}" "${FILE}" "${DEST}/${FILE_NAME}" "${BACKUP}"
-            elif ! in_array "${FILE_REF}" "${HANDLED_FILE_LIST[@]}"; then
-                HANDLED_FILE_LIST+=("${FILE_REF}")
-                smart_link "${GROUP}" "${IGNORE}" "${SRC}" "${DEST}" "${BACKUP}" "${FILE_NAME}"
-            fi
-        fi
-    done
 }

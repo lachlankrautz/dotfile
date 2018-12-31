@@ -98,7 +98,7 @@ EOF
 }
 
 ensure_not_root() {
-    if truth "${IS_ROOT}"; then
+    if [ "${IS_ROOT}" -eq 1 ]; then
         main_title
         error "Must not run as root"
         echo
@@ -189,25 +189,14 @@ smart_link() {
     local DEST_FILE="${DEST}/${FILE_REF}"
     local DISPLAY_FILE_REF="${FILE_REF}"
 
-    # (
-    #     echo "src-dir ${SRC}"
-    #     echo "dest-dir ${DEST}"
-    #     echo "backup ${BACKUP}"
-    #     echo "src-file ${SRC_FILE}"
-    #     echo "dest-file ${DEST_FILE}"
-    #     echo "file-ref ${FILE_REF}"
-    # ) | column -t
-    # echo
-    # return 0
-
     if [ -n "${GROUP/shared/}" ]; then
         DISPLAY_FILE_REF+=" (${GROUP})"
     fi
 
     # Link exists but doesn't point to the right file
     if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
-        if truth "${PREVIEW}"; then
-            echo_status "${term_fg_red}" "Broken" "${DISPLAY_FILE_REF}"
+        if [ "${PREVIEW}" -eq 1 ]; then
+            echo_status "${term_fg_red}" "    Broken" "${DISPLAY_FILE_REF}"
             return 1
         else
             # Remove bad link
@@ -217,7 +206,7 @@ smart_link() {
 
     # Already linked
     if [ -L "${DEST_FILE}" ]; then
-        echo_status "${term_fg_green}" "Linked" "${DISPLAY_FILE_REF}"
+        echo_status "${term_fg_green}" "    Linked" "${DISPLAY_FILE_REF}"
         return 0
     fi
 
@@ -228,25 +217,25 @@ smart_link() {
             return 1
         fi
 
-        if truth "${PREVIEW}"; then
-            echo_status "${term_fg_yellow}" "Backup" "${DISPLAY_FILE_REF}"
+        if [ "${PREVIEW}" -eq 1 ]; then
+            echo_status "${term_fg_yellow}" "    Backup" "${DISPLAY_FILE_REF}"
         else
             backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
         fi
     fi
 
     # Preview
-    if truth "${PREVIEW}"; then
+    if [ "${PREVIEW}" -eq 1 ]; then
         local COLOUR="${term_fg_white}"
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_yellow}"
         fi
-        echo_status "${COLOUR}" "Link" "${DISPLAY_FILE_REF}"
+        echo_status "${COLOUR}" "      Link" "${DISPLAY_FILE_REF}"
         return 0
     fi
 
     if [ ! -d "${DEST}" ] && ! mkdir -p "${DEST}"; then
-        echo_status "${term_fg_red}" "Failed" "${DISPLAY_FILE_REF}"
+        echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
         return 1
     fi
 
@@ -267,9 +256,9 @@ smart_link() {
     local STATUS="${?}"
 
     if [ "${STATUS}" -eq 0 ]; then
-        echo_status "${term_fg_green}" "Created" "${DISPLAY_FILE_REF}"
+        echo_status "${term_fg_green}" "   Created" "${DISPLAY_FILE_REF}"
     else
-        echo_status "${term_fg_red}" "Failed" "${DISPLAY_FILE_REF}"
+        echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
     fi
     return "${STATUS}"
 }
@@ -292,11 +281,11 @@ backup_move() {
 
     # Move to backup dir
     if ! mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"; then
-        echo_status "${term_fg_red}" "Backup" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "    Backup" "${FILE_STATUS}"
         return 1
     fi
 
-    echo_status "${term_fg_green}" "Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
+    echo_status "${term_fg_green}" "    Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
 }
 
 # Is this a nested dir
@@ -333,7 +322,7 @@ ensure_nested_dir() {
     local END_DIR="${DOTFILES_DIR}/${GROUP}"
 
     cdd "${DIR}"
-    CURRENT_DIR="$(pwd)"
+    CURRENT_DIR="${PWD}"
     while [ "${CURRENT_DIR}" != "${END_DIR}" ]; do
         IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_MARKER}"
         if [ ! -f "${IGNORE_FILE}" ]; then
@@ -345,7 +334,7 @@ ensure_nested_dir() {
         fi
 
         cdd ..
-        CURRENT_DIR="$(pwd)"
+        CURRENT_DIR="${PWD}"
     done
 
     return 0
@@ -377,7 +366,7 @@ cleanup_nested_dir() {
     fi
 
     cdd "${EXPORT_DIR}"
-    NESTED_DIR="$(pwd)"
+    NESTED_DIR="${PWD}"
     while [ "${NESTED_DIR}" != "${DOTFILE_GROUP_DIR}" ]; do
         IGNORE_FILE="${NESTED_DIR}/${DOTFILE_MARKER}"
 
@@ -405,7 +394,7 @@ cleanup_nested_dir() {
             return 1
         fi
         dotfile_git_add "${NESTED_DIR}" || return 1
-        NESTED_DIR="$(pwd)"
+        NESTED_DIR="${PWD}"
     done
 
     return 0
@@ -432,7 +421,9 @@ load_global_variables() {
     fi
 
     # Home dirs
-    HOME_DIR="$(abspath "~")"
+    # HOME_DIR="$(abspath "~")"
+    # should expand without quotes and be faster than abspath
+    HOME_DIR=~
     IS_ROOT=0
     if [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ]; then
         IS_ROOT=1
@@ -450,8 +441,9 @@ load_global_variables() {
     DOTFILE_MARKER=".dotfilemarker"
     BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup"
     ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_root"
-    # SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
-    DOTFILES_DIR="$(abspath "${config_dir}")"
+    SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
+    # DOTFILES_DIR="$(abspath "${config_dir}")"
+    DOTFILES_DIR="${config_dir}"
     DOTFILES_REPO="${config_repo}"
 
     # Dotfile groups
@@ -522,6 +514,7 @@ EOF
     sync
 }
 
+# TODO remove this whole function and use /*/ expansion to wildcard over the group
 file_ref() {
     local FILE_REF_PATH="${1}"
     if [ -z "${FILE_REF_PATH}" ]; then
@@ -567,32 +560,12 @@ implode() {
     echo "${*}"
 }
 
-lpad() {
-    local STRING="${1}"
-    local LENGTH="${2}"
-
-    if [ -z "${STRING}" ]; then
-        error "Missing string param"
-        return 1
-    fi
-
-    if [ -z "${LENGTH}" ]; then
-        error "Missing length param"
-        return 1
-    fi
-
-    local FILLER="                                                     "
-    local PAD_LENGTH
-    PAD_LENGTH=$(("${LENGTH}" - "${#STRING}"))
-    echo "${FILLER:0:${PAD_LENGTH}}${STRING}"
-}
-
 echo_status() {
     local COLOUR="${1}"
     local TITLE="${2}"
     local MESSAGE="${3}"
     local TILDE="~"
-    echo "$(lpad "${TITLE}" 10) ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
 }
 
 heading() {

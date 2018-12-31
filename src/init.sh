@@ -6,7 +6,7 @@ if [ "${DEBUG-0}" -gt 1 ]; then
 fi
 
 source_files_in_dir() {
-    local PATH_TMP="$(pwd)"
+    local PATH_TMP="${PWD}"
     local LIB_DIR="${PATH_BASE}/${1}"
     shift
 

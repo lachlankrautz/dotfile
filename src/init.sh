@@ -24,8 +24,6 @@ source_files_in_dir() {
     cd "${PATH_TMP}"
 }
 
-# word split on newline
-IFS=$'\n'
 source_files_in_dir "lib/bashful" \
     bashful-execute \
     bashful-files \

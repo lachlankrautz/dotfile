@@ -74,14 +74,26 @@ dotfile_git_add() {
     return 0
 }
 
+clone_repo() {
+    local GIT_REPO="${1}"
+    local NAME="${2}"
+
+    if ! git clone "${GIT_REPO}" "${NAME}"; then
+        error "Failed to clone ${GIT_REPO}"
+        return 1
+    fi
+
+    info "Cloned ${GIT_REPO} => ${NAME}"
+    return 0
+}
+
 sudo_command() {
-    local SUDO_COMMAND="${1}"; shift;
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
 TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
 PREVIEW="${PREVIEW}"
 source "${PATH_BASE}/src/init.sh"
-${SUDO_COMMAND} "${@}"
+"${@}"
 EOF
 }
 
@@ -146,24 +158,15 @@ ensure_dir() {
 
 ensure_file() {
     local FILE="${1}"
-    local NAME="${2}"
-    local MESSAGE="${NAME} ${FILE}"
-    if [ -z "${FILE}" ]; then
-        warn "${NAME} path not set"
+
+    [ -f "${FILE}" ] && return 0
+
+    if ! touch "${FILE}"; then
+        error "Failed to create ${FILE}"
         return 1
     fi
-    if [ -f "${FILE}" ]; then
-        info "Found ${MESSAGE}"
-        return 0
-    fi
-    touch "${FILE}"
-    local SUCCESS="${?}"
-    if [ "${SUCCESS}" -eq 0 ]; then
-        info "Created ${MESSAGE}"
-    else
-        warn "Failed to create ${MESSAGE}"
-    fi
-    return "${SUCCESS}"
+
+    return 0
 }
 
 # Create a link in a "smart" way
@@ -176,25 +179,35 @@ ensure_file() {
 #
 smart_link() {
     local GROUP="${1%/}"
-    local IGNORE="${2%/}"
-    local SRC="${3%/}"
-    local DEST="${4%/}"
-    local BACKUP="${5%/}"
-    local FILE_NAME="${6##*/}"
+    local SRC="${2%/}"
+    local DEST="${3%/}"
+    local BACKUP="${4%/}"
+    local FILE_REF="${5}"
+    local FILE_NAME="${5##*/}"
 
-    local SRC_FILE="${SRC}/${FILE_NAME}"
-    local DEST_FILE="${DEST}/${FILE_NAME}"
-    local FILE_STATUS="${DEST_FILE/${IGNORE}\//}"
+    local SRC_FILE="${SRC}/${FILE_REF}"
+    local DEST_FILE="${DEST}/${FILE_REF}"
+    local DISPLAY_FILE_REF="${FILE_REF}"
 
-    # Add group suffix to status
-    if [ -n "${GROUP}" ] && [ ! "${GROUP}" = "shared" ]; then
-        FILE_STATUS="${FILE_STATUS} (${GROUP})"
+    # (
+    #     echo "src-dir ${SRC}"
+    #     echo "dest-dir ${DEST}"
+    #     echo "backup ${BACKUP}"
+    #     echo "src-file ${SRC_FILE}"
+    #     echo "dest-file ${DEST_FILE}"
+    #     echo "file-ref ${FILE_REF}"
+    # ) | column -t
+    # echo
+    # return 0
+
+    if [ -n "${GROUP/shared/}" ]; then
+        DISPLAY_FILE_REF+=" (${GROUP})"
     fi
 
     # Link exists but doesn't point to the right file
     if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
         if truth "${PREVIEW}"; then
-            echo_status "${term_fg_red}" "Broken" "${FILE_STATUS}"
+            echo_status "${term_fg_red}" "Broken" "${DISPLAY_FILE_REF}"
             return 1
         else
             # Remove bad link
@@ -204,7 +217,7 @@ smart_link() {
 
     # Already linked
     if [ -L "${DEST_FILE}" ]; then
-        echo_status "${term_fg_green}" "Linked" "${FILE_STATUS}"
+        echo_status "${term_fg_green}" "Linked" "${DISPLAY_FILE_REF}"
         return 0
     fi
 
@@ -216,9 +229,9 @@ smart_link() {
         fi
 
         if truth "${PREVIEW}"; then
-            echo_status "${term_fg_yellow}" "Backup" "${FILE_STATUS}"
+            echo_status "${term_fg_yellow}" "Backup" "${DISPLAY_FILE_REF}"
         else
-            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${FILE_STATUS}" || return 1
+            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
         fi
     fi
 
@@ -228,12 +241,12 @@ smart_link() {
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_yellow}"
         fi
-        echo_status "${COLOUR}" "Link" "${FILE_STATUS}"
+        echo_status "${COLOUR}" "Link" "${DISPLAY_FILE_REF}"
         return 0
     fi
 
     if [ ! -d "${DEST}" ] && ! mkdir -p "${DEST}"; then
-        echo_status "${term_fg_red}" "Failed" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "Failed" "${DISPLAY_FILE_REF}"
         return 1
     fi
 
@@ -254,9 +267,9 @@ smart_link() {
     local STATUS="${?}"
 
     if [ "${STATUS}" -eq 0 ]; then
-        echo_status "${term_fg_green}" "Created" "${FILE_STATUS}"
+        echo_status "${term_fg_green}" "Created" "${DISPLAY_FILE_REF}"
     else
-        echo_status "${term_fg_red}" "Failed" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "Failed" "${DISPLAY_FILE_REF}"
     fi
     return "${STATUS}"
 }
@@ -298,7 +311,7 @@ is_nested_dir() {
         return 1
     fi
 
-    if [ ! -f "${DIR}/${DOTFILE_IGNORE}" ]; then
+    if [ ! -f "${DIR}/${DOTFILE_MARKER}" ]; then
         return 1
     fi
 
@@ -322,7 +335,7 @@ ensure_nested_dir() {
     cdd "${DIR}"
     CURRENT_DIR="$(pwd)"
     while [ "${CURRENT_DIR}" != "${END_DIR}" ]; do
-        IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_IGNORE}"
+        IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_MARKER}"
         if [ ! -f "${IGNORE_FILE}" ]; then
             if ! touch "${IGNORE_FILE}"; then
                 error "Unable to create ${IGNORE_FILE}"
@@ -366,7 +379,7 @@ cleanup_nested_dir() {
     cdd "${EXPORT_DIR}"
     NESTED_DIR="$(pwd)"
     while [ "${NESTED_DIR}" != "${DOTFILE_GROUP_DIR}" ]; do
-        IGNORE_FILE="${NESTED_DIR}/${DOTFILE_IGNORE}"
+        IGNORE_FILE="${NESTED_DIR}/${DOTFILE_MARKER}"
 
         # Not a nested dir
         if [ ! -f "${IGNORE_FILE}" ]; then
@@ -403,9 +416,7 @@ load_global_variables() {
 
     # Runtime settings
     HELP=0
-    if ! truth "${PREVIEW}";  then
-        PREVIEW=0
-    fi
+    PREVIEW="${PREVIEW-0}"
 
     # Platform
     local UNAME="$(uname)"
@@ -421,9 +432,9 @@ load_global_variables() {
     fi
 
     # Home dirs
-    HOME_DIR="$(abspath "~")"
+    time HOME_DIR="$(abspath "~")"
     IS_ROOT=0
-    if truth "${LINUX}" && [ "${EUID}" -eq 0 ]; then
+    if [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ]; then
         IS_ROOT=1
         HOME_DIR="/root"
         if [ -z "${TRUE_HOME_DIR}" ]; then
@@ -436,26 +447,26 @@ load_global_variables() {
 
     # Depends on loaded config
     ensure_config || return 1
-    DOTFILE_IGNORE=".dotfileignore"
-    BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_home"
-    ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/root_backup_home"
-    SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store" "${DOTFILE_IGNORE}")
+    DOTFILE_MARKER=".dotfilemarker"
+    BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup"
+    ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_root"
+    # SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
     DOTFILES_DIR="$(abspath "${config_dir}")"
     DOTFILES_REPO="${config_repo}"
-    CHECKED=()
 
     # Dotfile groups
     # Order is important
     DOTFILE_GROUP_LIST=()
-    truth "${IS_ROOT}" && DOTFILE_GROUP_LIST+=("root")
-    truth "${WINDOWS}" && DOTFILE_GROUP_LIST+=("windows")
-    truth "${OSX}" && DOTFILE_GROUP_LIST+=("osx")
-    truth "${LINUX}" && DOTFILE_GROUP_LIST+=("linux")
+    [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
+    [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
+    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("osx")
+    [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
     DOTFILE_GROUP_LIST+=("shared")
 
     local DOTFILE_GROUP
     for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" || return 1
+        ensure_file "${DOTFILES_DIR}/${DOTFILE_GROUP}/${DOTFILE_MARKER}" || return 1
     done
 }
 

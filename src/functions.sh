@@ -224,7 +224,7 @@ smart_link() {
     # File already exists and needs to be backed up
     if [ -e "${DEST_FILE}" ]; then
         if [ ! -d "${BACKUP}" ]; then
-            error "Missing backup dir"
+            error "Missing backup dir: ${BACKUP}"
             return 1
         fi
 
@@ -432,7 +432,7 @@ load_global_variables() {
     fi
 
     # Home dirs
-    time HOME_DIR="$(abspath "~")"
+    HOME_DIR="$(abspath "~")"
     IS_ROOT=0
     if [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ]; then
         IS_ROOT=1

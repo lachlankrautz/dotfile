@@ -13,7 +13,8 @@ install_dotfile() {
 
     echo
 
-    local UNAME="$(uname)"
+    local UNAME
+    UNAME="$(uname)"
     LINUX=0
     WINDOWS=0
     OSX=0
@@ -126,10 +127,13 @@ ensure_link() {
     local SRC="${2%/}"
     local DEST="${3%/}"
     local NAME="${3##*/}"
+    local NEED_LINK=0
+    local LINK
+    local WIN_SRC
+    local WIN_DEST
 
     echo "Checking executable: ${NAME}"
-    local NEED_LINK=0
-    local LINK="$(readlink "${DEST}")"
+    LINK="$(readlink "${DEST}")"
 
     if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
         NEED_LINK=1
@@ -147,8 +151,8 @@ ensure_link() {
 
         echo "Creating system link"
         if [ "${WINDOWS}" -eq 1 ]; then
-            local WIN_SRC="$(cygpath -w "${SRC}")"
-            local WIN_DEST="$(cygpath -w "${DEST}")"
+            WIN_SRC="$(cygpath -w "${SRC}")"
+            WIN_DEST="$(cygpath -w "${DEST}")"
             local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
             cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
         else

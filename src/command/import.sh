@@ -76,20 +76,20 @@ import_dotfile() {
     local DOTFILE_DIR="${DOTFILE_PATH%/*}"
 
     if [ ! -e "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" "Missing" "${FILE_REF}"
+        echo_status "${term_fg_red}" "   Missing" "${FILE_REF}"
         return 1
     fi
     if [ -e "${DOTFILE_PATH}" ]; then
-        echo_status "${term_fg_green}" "Imported" "${FILE_REF}"
+        echo_status "${term_fg_green}" "  Imported" "${FILE_REF}"
         return 1
     fi
     if [ -L "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" "Link" "${FILE_REF}"
+        echo_status "${term_fg_red}" "      Link" "${FILE_REF}"
         return 1
     fi
 
     if truth "${PREVIEW}"; then
-        echo_status "${term_fg_white}" "Import" "${FILE_REF}"
+        echo_status "${term_fg_white}" "    Import" "${FILE_REF}"
         return 0
     fi
 
@@ -98,7 +98,7 @@ import_dotfile() {
     fi
 
     if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
-        echo_status "${term_fg_red}" "Failed" "${FILE_REF}"
+        echo_status "${term_fg_red}" "    Failed" "${FILE_REF}"
         return 1
     fi
 
@@ -106,7 +106,7 @@ import_dotfile() {
             "${BACKUP_DIR}" "${IMPORT_NAME}" > /dev/null; then
         return 1
     fi
-    echo_status "${term_fg_green}" "Imported" "${FILE_REF}"
+    echo_status "${term_fg_green}" "  Imported" "${FILE_REF}"
 
     dotfile_git_add "${DOTFILE_PATH}"
 }

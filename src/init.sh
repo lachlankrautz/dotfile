@@ -2,11 +2,10 @@
 
 if [ "${DEBUG-0}" -gt 1 ]; then
     set -x
-    PS4='+ $(date "+%s.%N ($LINENO) ")'
 fi
 
 source_files_in_dir() {
-    local PATH_TMP="$(pwd)"
+    local PATH_TMP="${PWD}"
     local LIB_DIR="${PATH_BASE}/${1}"
     shift
 
@@ -24,8 +23,6 @@ source_files_in_dir() {
     cd "${PATH_TMP}"
 }
 
-# word split on newline
-IFS=$'\n'
 source_files_in_dir "lib/bashful" \
     bashful-execute \
     bashful-files \
@@ -41,7 +38,8 @@ source_files_in_dir "src" "functions.sh"
 source_files_in_dir "src/command" \
     "import.sh" \
     "export.sh" \
-    "remote.sh" \
+    "ssh.sh" \
+    "docker.sh" \
     "sync.sh" \
     "update.sh"
 

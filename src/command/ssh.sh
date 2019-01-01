@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-title_remote() {
+title_ssh() {
     doc_title << 'EOF'
-                                __
-     ________  ____ ___  ____  / /____
-    / ___/ _ \/ __ `__ \/ __ \/ __/ _ \
-   / /  /  __/ / / / / / /_/ / /_/  __/
-  /_/   \___/_/ /_/ /_/\____/\__/\___/
+                __
+     __________/ /_
+    / ___/ ___/ __ \
+   (__  |__  ) / / /
+  /____/____/_/ /_/
 
 EOF
     return 0
 }
 
-dotfile_command_remote() {
+dotfile_command_ssh() {
     local SSH_HOST="${1}"
 
     # Validate request
@@ -25,7 +25,7 @@ dotfile_command_remote() {
         return 1
     fi
 
-    title_remote
+    title_ssh
 
     local DOTFILES_CONTAINING_DIR
     DOTFILES_CONTAINING_DIR="$(dirname "${DOTFILES_DIR}")"

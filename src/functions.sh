@@ -23,11 +23,12 @@ ${term_fg_yellow}Options:${term_reset}
   ${term_fg_green}-p, --preview${term_reset}            Preview changes without writing
 
 ${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}                     Sync repo groups to home
-  ${term_fg_green}import${term_reset} <pattern> <group> Import file into config group (default "shared")
+  ${term_fg_green}sync${term_reset}                     Sync config dotfiles to home dir
+  ${term_fg_green}import${term_reset} <pattern> [group] Import file into config group (default "shared")
   ${term_fg_green}export${term_reset} <pattern>         Export file back out of config
-  ${term_fg_green}remote${term_reset} <user@host>       Install on remote host
-  ${term_fg_green}update${term_reset}                   Update remote config
+  ${term_fg_green}update${term_reset}                   Update config repo
+  ${term_fg_green}ssh${term_reset}    <user@host>       Sync remote host
+  ${term_fg_green}docker${term_reset} <container>       Sync docker container
 
 EOF
 }
@@ -74,11 +75,24 @@ dotfile_git_add() {
     return 0
 }
 
+clone_repo() {
+    local GIT_REPO="${1}"
+    local NAME="${2}"
+
+    if ! git clone "${GIT_REPO}" "${NAME}"; then
+        error "Failed to clone ${GIT_REPO}"
+        return 1
+    fi
+
+    info "Cloned ${GIT_REPO} => ${NAME}"
+    return 0
+}
+
 sudo_command() {
     local SUDO_COMMAND="${1}"; shift;
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
-TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
+TRUE_HOME_DIR="${HOME_DIR}"
 PREVIEW="${PREVIEW}"
 source "${PATH_BASE}/src/init.sh"
 ${SUDO_COMMAND} "${@}"
@@ -86,7 +100,7 @@ EOF
 }
 
 ensure_not_root() {
-    if truth "${IS_ROOT}"; then
+    if [ "${IS_ROOT}" -eq 1 ]; then
         main_title
         error "Must not run as root"
         echo
@@ -146,24 +160,15 @@ ensure_dir() {
 
 ensure_file() {
     local FILE="${1}"
-    local NAME="${2}"
-    local MESSAGE="${NAME} ${FILE}"
-    if [ -z "${FILE}" ]; then
-        warn "${NAME} path not set"
+
+    [ -f "${FILE}" ] && return 0
+
+    if ! touch "${FILE}"; then
+        error "Failed to create ${FILE}"
         return 1
     fi
-    if [ -f "${FILE}" ]; then
-        info "Found ${MESSAGE}"
-        return 0
-    fi
-    touch "${FILE}"
-    local SUCCESS="${?}"
-    if [ "${SUCCESS}" -eq 0 ]; then
-        info "Created ${MESSAGE}"
-    else
-        warn "Failed to create ${MESSAGE}"
-    fi
-    return "${SUCCESS}"
+
+    return 0
 }
 
 # Create a link in a "smart" way
@@ -176,25 +181,24 @@ ensure_file() {
 #
 smart_link() {
     local GROUP="${1%/}"
-    local IGNORE="${2%/}"
-    local SRC="${3%/}"
-    local DEST="${4%/}"
-    local BACKUP="${5%/}"
-    local FILE_NAME="${6##*/}"
+    local SRC="${2%/}"
+    local DEST="${3%/}"
+    local BACKUP="${4%/}"
+    local FILE_REF="${5}"
+    local FILE_NAME="${5##*/}"
 
-    local SRC_FILE="${SRC}/${FILE_NAME}"
-    local DEST_FILE="${DEST}/${FILE_NAME}"
-    local FILE_STATUS="${DEST_FILE/${IGNORE}\//}"
+    local SRC_FILE="${SRC}/${FILE_REF}"
+    local DEST_FILE="${DEST}/${FILE_REF}"
+    local DISPLAY_FILE_REF="${FILE_REF}"
 
-    # Add group suffix to status
-    if [ -n "${GROUP}" ] && [ ! "${GROUP}" = "shared" ]; then
-        FILE_STATUS="${FILE_STATUS} (${GROUP})"
+    if [ -n "${GROUP/shared/}" ]; then
+        DISPLAY_FILE_REF+=" (${GROUP})"
     fi
 
     # Link exists but doesn't point to the right file
     if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
-        if truth "${PREVIEW}"; then
-            echo_status "${term_fg_red}" "Broken" "${FILE_STATUS}"
+        if [ "${PREVIEW}" -eq 1 ]; then
+            echo_status "${term_fg_red}" "    Broken" "${DISPLAY_FILE_REF}"
             return 1
         else
             # Remove bad link
@@ -204,36 +208,36 @@ smart_link() {
 
     # Already linked
     if [ -L "${DEST_FILE}" ]; then
-        echo_status "${term_fg_green}" "Linked" "${FILE_STATUS}"
+        echo_status "${term_fg_green}" "    Linked" "${DISPLAY_FILE_REF}"
         return 0
     fi
 
     # File already exists and needs to be backed up
     if [ -e "${DEST_FILE}" ]; then
         if [ ! -d "${BACKUP}" ]; then
-            error "Missing backup dir"
+            error "Missing backup dir: ${BACKUP}"
             return 1
         fi
 
-        if truth "${PREVIEW}"; then
-            echo_status "${term_fg_yellow}" "Backup" "${FILE_STATUS}"
+        if [ "${PREVIEW}" -eq 1 ]; then
+            echo_status "${term_fg_yellow}" "    Backup" "${DISPLAY_FILE_REF}"
         else
-            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${FILE_STATUS}" || return 1
+            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
         fi
     fi
 
     # Preview
-    if truth "${PREVIEW}"; then
+    if [ "${PREVIEW}" -eq 1 ]; then
         local COLOUR="${term_fg_white}"
         if [ ! -d "${DEST}" ]; then
             COLOUR="${term_fg_yellow}"
         fi
-        echo_status "${COLOUR}" "Link" "${FILE_STATUS}"
+        echo_status "${COLOUR}" "      Link" "${DISPLAY_FILE_REF}"
         return 0
     fi
 
     if [ ! -d "${DEST}" ] && ! mkdir -p "${DEST}"; then
-        echo_status "${term_fg_red}" "Failed" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
         return 1
     fi
 
@@ -254,9 +258,9 @@ smart_link() {
     local STATUS="${?}"
 
     if [ "${STATUS}" -eq 0 ]; then
-        echo_status "${term_fg_green}" "Created" "${FILE_STATUS}"
+        echo_status "${term_fg_green}" "   Created" "${DISPLAY_FILE_REF}"
     else
-        echo_status "${term_fg_red}" "Failed" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
     fi
     return "${STATUS}"
 }
@@ -279,11 +283,11 @@ backup_move() {
 
     # Move to backup dir
     if ! mv "${SRC}/${FILE}" "${DEST}/${BACKUP_FILE}"; then
-        echo_status "${term_fg_red}" "Backup" "${FILE_STATUS}"
+        echo_status "${term_fg_red}" "    Backup" "${FILE_STATUS}"
         return 1
     fi
 
-    echo_status "${term_fg_green}" "Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
+    echo_status "${term_fg_green}" "    Backup" "${FILE_STATUS/${FILE}/${BACKUP_FILE}}"
 }
 
 # Is this a nested dir
@@ -298,7 +302,7 @@ is_nested_dir() {
         return 1
     fi
 
-    if [ ! -f "${DIR}/${DOTFILE_IGNORE}" ]; then
+    if [ ! -f "${DIR}/${DOTFILE_MARKER}" ]; then
         return 1
     fi
 
@@ -320,9 +324,9 @@ ensure_nested_dir() {
     local END_DIR="${DOTFILES_DIR}/${GROUP}"
 
     cdd "${DIR}"
-    CURRENT_DIR="$(pwd)"
+    CURRENT_DIR="${PWD}"
     while [ "${CURRENT_DIR}" != "${END_DIR}" ]; do
-        IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_IGNORE}"
+        IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_MARKER}"
         if [ ! -f "${IGNORE_FILE}" ]; then
             if ! touch "${IGNORE_FILE}"; then
                 error "Unable to create ${IGNORE_FILE}"
@@ -332,7 +336,7 @@ ensure_nested_dir() {
         fi
 
         cdd ..
-        CURRENT_DIR="$(pwd)"
+        CURRENT_DIR="${PWD}"
     done
 
     return 0
@@ -364,9 +368,9 @@ cleanup_nested_dir() {
     fi
 
     cdd "${EXPORT_DIR}"
-    NESTED_DIR="$(pwd)"
+    NESTED_DIR="${PWD}"
     while [ "${NESTED_DIR}" != "${DOTFILE_GROUP_DIR}" ]; do
-        IGNORE_FILE="${NESTED_DIR}/${DOTFILE_IGNORE}"
+        IGNORE_FILE="${NESTED_DIR}/${DOTFILE_MARKER}"
 
         # Not a nested dir
         if [ ! -f "${IGNORE_FILE}" ]; then
@@ -392,7 +396,7 @@ cleanup_nested_dir() {
             return 1
         fi
         dotfile_git_add "${NESTED_DIR}" || return 1
-        NESTED_DIR="$(pwd)"
+        NESTED_DIR="${PWD}"
     done
 
     return 0
@@ -400,18 +404,15 @@ cleanup_nested_dir() {
 
 load_global_variables() {
     VERSION="2.0.0"
-
-    # Runtime settings
     HELP=0
-    if ! truth "${PREVIEW}";  then
-        PREVIEW=0
-    fi
+    PREVIEW="${PREVIEW-0}"
+    DEBUG="${DEBUG-0}"
 
     # Platform
     local UNAME="$(uname)"
-    LINUX=0
+    local LINUX=0
+    local OSX=0
     WINDOWS=0
-    OSX=0
     if [ "${UNAME}" = "Linux" ]; then
         LINUX=1
     elif [ "${UNAME}" = "Darwin" ]; then
@@ -420,42 +421,33 @@ load_global_variables() {
         WINDOWS=1
     fi
 
-    # Home dirs
-    HOME_DIR="$(abspath "~")"
-    IS_ROOT=0
-    if truth "${LINUX}" && [ "${EUID}" -eq 0 ]; then
-        IS_ROOT=1
-        HOME_DIR="/root"
-        if [ -z "${TRUE_HOME_DIR}" ]; then
-            error "Unable to determine home dir"
-            exit
-        fi
-    else
-        TRUE_HOME_DIR="${HOME_DIR}"
-    fi
+    # Home dir
+    HOME_DIR=~
+    TRUE_HOME_DIR="${TRUE_HOME_DIR-${HOME_DIR}}"
+    [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ] && IS_ROOT=1 || IS_ROOT=0
 
     # Depends on loaded config
     ensure_config || return 1
-    DOTFILE_IGNORE=".dotfileignore"
-    BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_home"
-    ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/root_backup_home"
-    SYNC_EXCLUDE=(".git" ".gitignore" ".DS_Store" "${DOTFILE_IGNORE}")
-    DOTFILES_DIR="$(abspath "${config_dir}")"
+    DOTFILE_MARKER=".dotfilemarker"
+    BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup"
+    ROOT_BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
+    SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
+    DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
     DOTFILES_REPO="${config_repo}"
-    CHECKED=()
 
     # Dotfile groups
     # Order is important
     DOTFILE_GROUP_LIST=()
-    truth "${IS_ROOT}" && DOTFILE_GROUP_LIST+=("root")
-    truth "${WINDOWS}" && DOTFILE_GROUP_LIST+=("windows")
-    truth "${OSX}" && DOTFILE_GROUP_LIST+=("osx")
-    truth "${LINUX}" && DOTFILE_GROUP_LIST+=("linux")
+    [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
+    [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
+    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("osx")
+    [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
     DOTFILE_GROUP_LIST+=("shared")
 
     local DOTFILE_GROUP
     for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" || return 1
+        ensure_file "${DOTFILES_DIR}/${DOTFILE_GROUP}/${DOTFILE_MARKER}" || return 1
     done
 }
 
@@ -511,6 +503,7 @@ EOF
     sync
 }
 
+# TODO remove this whole function and use /*/ expansion to wildcard over the group
 file_ref() {
     local FILE_REF_PATH="${1}"
     if [ -z "${FILE_REF_PATH}" ]; then
@@ -556,36 +549,15 @@ implode() {
     echo "${*}"
 }
 
-lpad() {
-    local STRING="${1}"
-    local LENGTH="${2}"
-
-    if [ -z "${STRING}" ]; then
-        error "Missing string param"
-        return 1
-    fi
-
-    if [ -z "${LENGTH}" ]; then
-        error "Missing length param"
-        return 1
-    fi
-
-    local FILLER="                                                     "
-    local PAD_LENGTH
-    PAD_LENGTH=$(("${LENGTH}" - "${#STRING}"))
-    echo "${FILLER:0:${PAD_LENGTH}}${STRING}"
-}
-
 echo_status() {
     local COLOUR="${1}"
     local TITLE="${2}"
     local MESSAGE="${3}"
     local TILDE="~"
-    echo "$(lpad "${TITLE}" 10) ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
 }
 
 heading() {
     local MESSAGE="${1}"
-    local TILDE="~"
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE}${term_reset}"
 }

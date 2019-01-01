@@ -23,11 +23,12 @@ ${term_fg_yellow}Options:${term_reset}
   ${term_fg_green}-p, --preview${term_reset}            Preview changes without writing
 
 ${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}                     Sync repo groups to home
-  ${term_fg_green}import${term_reset} <pattern> <group> Import file into config group (default "shared")
+  ${term_fg_green}sync${term_reset}                     Sync config dotfiles to home dir
+  ${term_fg_green}import${term_reset} <pattern> [group] Import file into config group (default "shared")
   ${term_fg_green}export${term_reset} <pattern>         Export file back out of config
-  ${term_fg_green}remote${term_reset} <user@host>       Install on remote host
-  ${term_fg_green}update${term_reset}                   Update remote config
+  ${term_fg_green}update${term_reset}                   Update config repo
+  ${term_fg_green}ssh${term_reset}    <user@host>       Sync remote host
+  ${term_fg_green}docker${term_reset} <container>       Sync docker container
 
 EOF
 }
@@ -88,12 +89,13 @@ clone_repo() {
 }
 
 sudo_command() {
+    local SUDO_COMMAND="${1}"; shift;
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
-TRUE_HOME_DIR="$(abspath ${HOME_DIR})"
+TRUE_HOME_DIR="${HOME_DIR}"
 PREVIEW="${PREVIEW}"
 source "${PATH_BASE}/src/init.sh"
-"${@}"
+${SUDO_COMMAND} "${@}"
 EOF
 }
 
@@ -402,16 +404,15 @@ cleanup_nested_dir() {
 
 load_global_variables() {
     VERSION="2.0.0"
-
-    # Runtime settings
     HELP=0
     PREVIEW="${PREVIEW-0}"
+    DEBUG="${DEBUG-0}"
 
     # Platform
     local UNAME="$(uname)"
-    LINUX=0
+    local LINUX=0
+    local OSX=0
     WINDOWS=0
-    OSX=0
     if [ "${UNAME}" = "Linux" ]; then
         LINUX=1
     elif [ "${UNAME}" = "Darwin" ]; then
@@ -420,30 +421,18 @@ load_global_variables() {
         WINDOWS=1
     fi
 
-    # Home dirs
-    # HOME_DIR="$(abspath "~")"
-    # should expand without quotes and be faster than abspath
+    # Home dir
     HOME_DIR=~
-    IS_ROOT=0
-    if [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ]; then
-        IS_ROOT=1
-        HOME_DIR="/root"
-        if [ -z "${TRUE_HOME_DIR}" ]; then
-            error "Unable to determine home dir"
-            exit
-        fi
-    else
-        TRUE_HOME_DIR="${HOME_DIR}"
-    fi
+    TRUE_HOME_DIR="${TRUE_HOME_DIR-${HOME_DIR}}"
+    [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ] && IS_ROOT=1 || IS_ROOT=0
 
     # Depends on loaded config
     ensure_config || return 1
     DOTFILE_MARKER=".dotfilemarker"
-    BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup"
-    ROOT_BACKUP_DIR="${HOME_DIR}/.config/dotfile/backup_root"
+    BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup"
+    ROOT_BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
     SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
-    # DOTFILES_DIR="$(abspath "${config_dir}")"
-    DOTFILES_DIR="${config_dir}"
+    DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
     DOTFILES_REPO="${config_repo}"
 
     # Dotfile groups
@@ -565,11 +554,10 @@ echo_status() {
     local TITLE="${2}"
     local MESSAGE="${3}"
     local TILDE="~"
-    echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
 }
 
 heading() {
     local MESSAGE="${1}"
-    local TILDE="~"
-    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE//${TRUE_HOME_DIR}/${TILDE}}${term_reset}"
+    echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE}${term_reset}"
 }

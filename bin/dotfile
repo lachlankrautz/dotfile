@@ -20,4 +20,3 @@ source "${PATH_BASE}/src/menu.sh"
 
 ensure_not_root
 dispatch dotfile "$@"
-exit "${?}"

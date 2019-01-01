@@ -2,7 +2,6 @@
 
 if [ "${DEBUG-0}" -gt 1 ]; then
     set -x
-    PS4='+ $(date "+%s.%N ($LINENO) ")'
 fi
 
 source_files_in_dir() {
@@ -39,7 +38,8 @@ source_files_in_dir "src" "functions.sh"
 source_files_in_dir "src/command" \
     "import.sh" \
     "export.sh" \
-    "remote.sh" \
+    "ssh.sh" \
+    "docker.sh" \
     "sync.sh" \
     "update.sh"
 

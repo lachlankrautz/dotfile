@@ -65,14 +65,12 @@ ensure_dotfiles_dir() {
 
 sync_config_to_home() {
     local BACKUP_DIR="${1%/}"
-    local DEST_DIR
-    [ "${IS_ROOT}" -eq 1 ] && DEST_DIR="/root" || DEST_DIR="${HOME_DIR}"
     local GROUP
     local SRC_DIR
     local EXCLUDE_NAMES=()
     local EXCLUDE_PATHS=()
 
-    heading "Sync ${DEST_DIR}"
+    heading "Sync ${HOME_DIR}"
 
     if [ "${#DOTFILE_GROUP_LIST[@]}" = 0 ]; then
         echo "No repo groups available"
@@ -91,20 +89,22 @@ sync_config_to_home() {
         cdd "${SRC_DIR}"
 
         while read -r -d $'\0' FILE; do
-            # Skip dir containing a `${DOTFILE_MARKER}`
+            # Skip dir if it contains a `${DOTFILE_MARKER}`
             if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
+                [ "${DEBUG}" -gt 0 ] && echo "Skip nested dir: ${FILE}"
                 continue
             fi
 
-            # Skip file unless dir contains a `${DOTFILE_MARKER}`
-            if [ -f "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
+            # Skip file unless it's next to a `${DOTFILE_MARKER}`
+            if [ -e "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
+                [ "${DEBUG}" -gt 0 ] && echo "Skip non dotfile: ${FILE}"
                 continue
             fi
 
             # Make sure we don't match this file again in another group
             EXCLUDE_PATHS+=(-not -path "${FILE}")
 
-            smart_link "${GROUP}" "${SRC_DIR}" "${DEST_DIR}" "${BACKUP_DIR}" "${FILE/.\//}"
+            smart_link "${GROUP}" "${SRC_DIR}" "${HOME_DIR}" "${BACKUP_DIR}" "${FILE/.\//}"
         done < <(find . -mindepth 1 "${EXCLUDE_NAMES[@]}" "${EXCLUDE_PATHS[@]}" -print0)
     done
 
@@ -112,6 +112,4 @@ sync_config_to_home() {
         info "No files in config repo, get started with \"dotfile import\""
     fi
     echo
-
-    return 0
 }

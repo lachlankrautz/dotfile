@@ -15,14 +15,8 @@ install_dotfile() {
 
     local UNAME
     UNAME="$(uname)"
-    local LINUX=0
     WINDOWS=0
-    OSX=0
-    if [ "${UNAME}" = "Linux" ]; then
-        LINUX=1
-    elif [ "${UNAME}" = "Darwin" ]; then
-        OSX=1
-    elif [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
+    if [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
         WINDOWS=1
         SUDO_CMD=""
         if [ ! -d "/opt" ]; then

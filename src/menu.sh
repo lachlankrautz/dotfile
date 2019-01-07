@@ -16,7 +16,7 @@ dotfile_option_v() {
     dotfile_option_version
 }
 dotfile_option_version() {
-    echo "Version ${term_fg_yellow}${VERSION}${term_reset}"
+    echo "Version ${term_fg_yellow}2.0.0${term_reset}"
 }
 
 dotfile_option_h() {

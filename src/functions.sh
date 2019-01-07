@@ -276,7 +276,8 @@ backup_move() {
     local FILE_STATUS="${4}"
 
     local DEST="${SRC/${HOME_DIR}/${BACKUP}}"
-    local BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
+    local BACKUP_FILE
+    BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
 
     if [ ! -d "${DEST}" ]; then
         if ! mkdir -p "${DEST}"; then
@@ -406,14 +407,16 @@ cleanup_nested_dir() {
     return 0
 }
 
+# shellcheck disable=SC2034
 load_global_variables() {
-    VERSION="2.0.0"
-    HELP=0
+
+    HELP="${HELP-0}"
     PREVIEW="${PREVIEW-0}"
     DEBUG="${DEBUG-0}"
 
     # Platform
-    local UNAME="$(uname)"
+    local UNAME
+    UNAME="$(uname)"
     local LINUX=0
     local OSX=0
     WINDOWS=0
@@ -433,10 +436,10 @@ load_global_variables() {
     # Depends on loaded config
     ensure_config || return 1
     DOTFILE_MARKER=".dotfilemarker"
+    DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
     BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup"
     ROOT_BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
     SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
-    DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
     DOTFILES_REPO="${config_repo}"
 
     # Dotfile groups
@@ -487,6 +490,7 @@ create_config() {
     local FILE="${1}"
 
     if [ -z "${config_dir}" ]; then
+        # shellcheck disable=SC2088
         config_dir="~/config"
     fi
     if [ -z "${config_repo}" ]; then

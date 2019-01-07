@@ -15,6 +15,9 @@ EOF
 dotfile_command_scp() {
     local SSH_HOST="${1}"
 
+    warn "this is really dangerous, I refuse to run it"
+    return 1
+
     # Validate request
     if [ -z "${SSH_HOST}" ]; then
         error "Missing host"
@@ -78,6 +81,7 @@ dotfile_command_scp() {
     local TMP_CONFIG_DIR="${DOTFILES_DIR/${TRUE_HOME_DIR}/${TILDE}}"
 
     info "Running script on ${SSH_HOST}"
+    # shellcheck disable=SC2087
     ssh -T "${SSH_HOST}" << EOF
 export TERM=xterm
 export config_dir="${TMP_CONFIG_DIR}"

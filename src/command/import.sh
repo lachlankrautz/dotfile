@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
 title_import() {
     doc_title << 'EOF'
@@ -73,7 +74,7 @@ import_dotfile() {
     local FILE_REF="${2//${HOME_DIR}\//}"
     local DOTFILE_PATH="${DOTFILES_DIR}/${GROUP}/${FILE_REF}"
     local IMPORT_DIR="${IMPORT_FILE%/*}"
-    local DOTFILE_DIR="${DOTFILE_PATH%/*}"
+    local DOTFILES_DIR="${DOTFILE_PATH%/*}"
 
     if [ ! -e "${IMPORT_FILE}" ]; then
         echo_status "${term_fg_red}" "   Missing" "${FILE_REF}"
@@ -94,7 +95,7 @@ import_dotfile() {
     fi
 
     if [ "${HOME_DIR}" != "${IMPORT_DIR}" ]; then
-        ensure_nested_dir "${GROUP}" "${DOTFILE_DIR}" || return 1
+        ensure_nested_dir "${GROUP}" "${DOTFILES_DIR}" || return 1
     fi
 
     if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
@@ -102,7 +103,7 @@ import_dotfile() {
         return 1
     fi
 
-    if ! smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILE_DIR}" "${IMPORT_DIR}" \
+    if ! smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILES_DIR}" "${IMPORT_DIR}" \
             "${BACKUP_DIR}" "${IMPORT_NAME}" > /dev/null; then
         return 1
     fi

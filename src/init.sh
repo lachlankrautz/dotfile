@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
 
 if [ "${DEBUG-0}" -gt 1 ]; then
     set -x
@@ -9,7 +10,7 @@ source_files_in_dir() {
     local LIB_DIR="${PATH_BASE}/${1}"
     shift
 
-    cd "${LIB_DIR}"
+    cd "${LIB_DIR}" || exit 1
     for LIB_FILE in "${@}"; do
         if [ "${DEBUG-0}" -eq 1 ]; then
             echo "source ${LIB_FILE}"
@@ -20,7 +21,7 @@ source_files_in_dir() {
             source "${LIB_FILE}"
         fi
     done
-    cd "${PATH_TMP}"
+    cd "${PATH_TMP}" || exit 1
 }
 
 source_files_in_dir "lib/bashful" \

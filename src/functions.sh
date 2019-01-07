@@ -104,7 +104,7 @@ ensure_not_root() {
         main_title
         error "Must not run as root"
         echo
-        exit 1
+        return 1
     fi
 }
 
@@ -245,8 +245,11 @@ smart_link() {
     if [ "${WINDOWS}" -eq 1 ]; then
         [ -d "${SRC_FILE}" ] && OPT="/D " || OPT=""
 
-        local WIN_SRC_FILE="$(cygpath -w "${SRC_FILE}")"
-        local WIN_DEST_FILE="$(cygpath -w "${DEST_FILE}")"
+        local WIN_SRC_FILE
+        local WIN_DEST_FILE
+
+        WIN_SRC_FILE="$(cygpath -w "${SRC_FILE}")"
+        WIN_DEST_FILE="$(cygpath -w "${DEST_FILE}")"
         local CMD_C="mklink ${OPT}${WIN_DEST_FILE} ${WIN_SRC_FILE}"
 
         # Windows link attempt
@@ -553,7 +556,6 @@ echo_status() {
     local COLOUR="${1}"
     local TITLE="${2}"
     local MESSAGE="${3}"
-    local TILDE="~"
     echo "${TITLE} ${term_bold}${COLOUR}${MESSAGE}${term_reset}"
 }
 

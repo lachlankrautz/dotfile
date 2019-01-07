@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
 
 find_me() {
     # Find where we are installed through possible system links
@@ -18,5 +19,5 @@ find_me
 source "${PATH_BASE}/src/init.sh"
 source "${PATH_BASE}/src/menu.sh"
 
-ensure_not_root
+ensure_not_root || exit 1
 dispatch dotfile "$@"

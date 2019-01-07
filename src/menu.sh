@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
 # Empty call
 dotfile_() {
@@ -8,7 +9,7 @@ dotfile_() {
 # Bad call
 dotfile_call_() {
     usage
-    exit 1
+    return 1
 }
 
 dotfile_option_v() {
@@ -22,7 +23,7 @@ dotfile_option_h() {
     dotfile_option_help "${@}"
 }
 dotfile_option_help() {
-    HELP=1
+    export HELP=1
     dispatch dotfile "${@}"
 }
 
@@ -30,6 +31,6 @@ dotfile_option_p() {
     dotfile_option_preview "${@}"
 }
 dotfile_option_preview() {
-    PREVIEW=1
+    export PREVIEW=1
     dispatch dotfile "$@"
 }

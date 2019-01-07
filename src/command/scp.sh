@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-title_ssh() {
+title_scp() {
     doc_title << 'EOF'
-                __
-     __________/ /_
+     ______________
     / ___/ ___/ __ \
-   (__  |__  ) / / /
-  /____/____/_/ /_/
+   (__  ) /__/ /_/ /
+  /____/\___/ .___/
+           /_/
 
 EOF
     return 0
 }
 
-dotfile_command_ssh() {
+dotfile_command_scp() {
     local SSH_HOST="${1}"
 
     # Validate request

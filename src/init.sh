@@ -39,7 +39,7 @@ source_files_in_dir "src" "functions.sh"
 source_files_in_dir "src/command" \
     "import.sh" \
     "export.sh" \
-    "ssh.sh" \
+    "scp.sh" \
     "docker.sh" \
     "sync.sh" \
     "update.sh"

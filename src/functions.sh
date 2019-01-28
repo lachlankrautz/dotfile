@@ -190,6 +190,7 @@ smart_link() {
 
     local SRC_FILE="${SRC}/${FILE_REF}"
     local DEST_FILE="${DEST}/${FILE_REF}"
+    local DEST_DIR="${DEST_FILE%/*}"
     local DISPLAY_FILE_REF="${FILE_REF}"
 
     if [ -n "${GROUP/shared/}" ]; then
@@ -237,7 +238,7 @@ smart_link() {
         return 0
     fi
 
-    if [ ! -d "${DEST}" ] && ! mkdir -p "${DEST}"; then
+    if [ ! -d "${DEST_DIR}" ] && ! mkdir -p "${DEST_DIR}"; then
         echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
         return 1
     fi

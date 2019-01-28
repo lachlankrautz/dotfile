@@ -15,7 +15,7 @@ EOF
 dotfile_command_scp() {
     local SSH_HOST="${1}"
 
-    warn "this is really dangerous, I refuse to run it"
+    warn "WIP, not ready yet"
     return 1
 
     # Validate request

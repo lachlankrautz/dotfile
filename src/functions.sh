@@ -12,6 +12,87 @@ main_title() {
 EOF
 }
 
+title_docker() {
+    doc_title << 'EOF'
+         __           __
+    ____/ /___  _____/ /_____  _____
+   / __  / __ \/ ___/ //_/ _ \/ ___/
+  / /_/ / /_/ / /__/ ,< /  __/ /
+  \__,_/\____/\___/_/|_|\___/_/
+
+EOF
+    return 0
+}
+
+title_export() {
+    doc_title << 'EOF'
+                                __
+    ___  _  ______  ____  _____/ /_
+   / _ \| |/_/ __ \/ __ \/ ___/ __/
+  /  __/>  </ /_/ / /_/ / /  / /_
+  \___/_/|_/ .___/\____/_/   \__/
+          /_/
+
+EOF
+    return 0
+}
+
+title_import() {
+    doc_title << 'EOF'
+      _                            __
+     (_)___ ___  ____  ____  _____/ /_
+    / / __ `__ \/ __ \/ __ \/ ___/ __/
+   / / / / / / / /_/ / /_/ / /  / /_
+  /_/_/ /_/ /_/ .___/\____/_/   \__/
+             /_/
+
+EOF
+    return 0
+}
+
+title_install() {
+    doc_title << 'EOF'
+ // install //
+EOF
+    return 0
+}
+
+title_scp() {
+    doc_title << 'EOF'
+     ______________
+    / ___/ ___/ __ \
+   (__  ) /__/ /_/ /
+  /____/\___/ .___/
+           /_/
+
+EOF
+    return 0
+}
+
+title_sync() {
+    doc_title << 'EOF'
+     _______  ______  _____
+    / ___/ / / / __ \/ ___/
+   (__  ) /_/ / / / / /__
+  /____/\__, /_/ /_/\___/
+       /____/
+
+EOF
+}
+
+title_update() {
+    doc_title << 'EOF'
+                     __      __
+    __  ______  ____/ /___ _/ /____
+   / / / / __ \/ __  / __ `/ __/ _ \
+  / /_/ / /_/ / /_/ / /_/ / /_/  __/
+  \__,_/ .___/\__,_/\__,_/\__/\___/
+      /_/
+
+EOF
+    return 0
+}
+
 usage() {
     main_title
     cat << EOF
@@ -415,64 +496,6 @@ cleanup_nested_dir() {
     return 0
 }
 
-# shellcheck disable=SC2034
-load_global_variables() {
-    HELP="${HELP-0}"
-    PREVIEW="${PREVIEW-0}"
-    DEBUG="${DEBUG-0}"
-
-    # Platform
-    local UNAME
-    UNAME="$(uname -a)"
-    local LINUX=0
-    local OSX=0
-    MSYS=0
-    local WSL=0
-    SUDO_COMMAND=sudo
-    if [[ ${UNAME} =~ ^Linux.*$ ]]; then
-        LINUX=1
-    fi
-    if [[ ${UNAME} = ^Darwin.*$ ]]; then
-        OSX=1
-    fi
-    if [[ ${UNAME} =~ ^(MINGW|MSYS).*$ ]]; then
-        MSYS=1
-        SUDO_COMMAND=
-    fi
-    if [[ ${UNAME} =~ ^.*Microsoft.*$ ]]; then
-        WSL=1
-    fi
-
-    # Home dir
-    HOME_DIR=~
-    TRUE_HOME_DIR="${TRUE_HOME_DIR-${HOME_DIR}}"
-    [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ] && IS_ROOT=1 || IS_ROOT=0
-
-    # Depends on loaded config
-    ensure_config || return 1
-    DOTFILE_MARKER=".dotfilemarker"
-    DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
-    BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup"
-    ROOT_BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
-    SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
-    DOTFILES_REPO="${config_repo}"
-
-    # Dotfile groups
-    # Order is important
-    DOTFILE_GROUP_LIST=()
-    [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
-    [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
-    [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
-    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
-    [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
-    DOTFILE_GROUP_LIST+=("shared")
-
-    local DOTFILE_GROUP
-    for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
-        ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" || return 1
-        ensure_file "${DOTFILES_DIR}/${DOTFILE_GROUP}/${DOTFILE_MARKER}" || return 1
-    done
-}
 
 ensure_config() {
     local PATH_CONFIG="${TRUE_HOME_DIR}/.config/dotfile"
@@ -583,4 +606,196 @@ echo_status() {
 heading() {
     local MESSAGE="${1}"
     echo "${term_bold}${term_fg_green}:: ${term_fg_white}${MESSAGE}${term_reset}"
+}
+
+export_dotfile() {
+    local EXPORT_FILE="${1}"
+    local REPO_DIR
+    local REPO_FILE
+    local FILE_REF
+
+    if [ ! -e "${EXPORT_FILE}" ]; then
+        echo_status "${term_fg_red}" "   Missing" "${EXPORT_FILE}"
+        return 1
+    fi
+
+    if [ ! -L "${EXPORT_FILE}" ]; then
+        echo_status "${term_fg_green}" "  Restored" "${EXPORT_FILE}"
+        return 1
+    fi
+
+    if truth "${PREVIEW}"; then
+        echo_status "${term_fg_white}" "    Export" "${EXPORT_FILE}"
+        return 0
+    fi
+
+    REPO_FILE="$(readlink "${EXPORT_FILE}")"
+    if [ -z "${REPO_FILE}" ]; then
+        error "Missing linked file for ${EXPORT_FILE}"
+        return 1
+    fi
+    if [ "$(commonpath "${DOTFILES_DIR}" "${REPO_FILE}")" != "${DOTFILES_DIR}" ]; then
+        error "Link must point to file inside ${DOTFILES_DIR}: ${REPO_FILE}"
+        echo
+        return 1
+    fi
+    FILE_REF="$(file_ref "${REPO_FILE}")"
+    local DOTFILE_GROUP_DIR="${REPO_FILE/\/${FILE_REF}/}"
+    REPO_DIR="${REPO_FILE%/*}"
+
+    if ! rm "${EXPORT_FILE}"; then
+        error "Failed to remove link ${EXPORT_FILE}"
+        return 1
+    fi
+    if ! mv "${REPO_FILE}" "${EXPORT_FILE}"; then
+        error "Failed to restore ${EXPORT_FILE}"
+        return 1
+    fi
+    dotfile_git_add "${REPO_FILE}" || return 1
+
+    if [ "${DOTFILE_GROUP_DIR}" != "${REPO_DIR}" ]; then
+        cleanup_nested_dir "${DOTFILE_GROUP_DIR}" "${REPO_DIR}" || return 1
+    fi
+
+    echo_status "${term_fg_green}" "  Restored" "${EXPORT_FILE}"
+}
+
+import_dotfile() {
+    local GROUP="${1}"
+    local IMPORT_FILE="${2}"
+    local FILE_REF="${2//${HOME_DIR}\//}"
+    local DOTFILE_PATH="${DOTFILES_DIR}/${GROUP}/${FILE_REF}"
+    local IMPORT_DIR="${IMPORT_FILE%/*}"
+    local DOTFILES_DIR="${DOTFILE_PATH%/*}"
+
+    if [ ! -e "${IMPORT_FILE}" ]; then
+        echo_status "${term_fg_red}" "   Missing" "${FILE_REF}"
+        return 1
+    fi
+    if [ -e "${DOTFILE_PATH}" ]; then
+        echo_status "${term_fg_green}" "  Imported" "${FILE_REF}"
+        return 1
+    fi
+    if [ -L "${IMPORT_FILE}" ]; then
+        echo_status "${term_fg_red}" "      Link" "${FILE_REF}"
+        return 1
+    fi
+
+    if truth "${PREVIEW}"; then
+        echo_status "${term_fg_white}" "    Import" "${FILE_REF}"
+        return 0
+    fi
+
+    if [ "${HOME_DIR}" != "${IMPORT_DIR}" ]; then
+        ensure_nested_dir "${GROUP}" "${DOTFILES_DIR}" || return 1
+    fi
+
+    if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
+        echo_status "${term_fg_red}" "    Failed" "${FILE_REF}"
+        return 1
+    fi
+
+    if ! smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILES_DIR}" "${IMPORT_DIR}" \
+            "${BACKUP_DIR}" > /dev/null; then
+        return 1
+    fi
+    echo_status "${term_fg_green}" "  Imported" "${FILE_REF}"
+
+    dotfile_git_add "${DOTFILE_PATH}"
+}
+
+display_ensure_filesystem() {
+    if [ "${PREVIEW}" -eq 1 ]; then
+        info "Preview"
+        echo
+    fi
+
+    local HEADING
+    [ -n "${DOTFILES_REPO}" ] && HEADING="${DOTFILES_REPO}" || HEADING="${DOTFILES_DIR}"
+    heading "Dotfiles ${term_fg_green}${HEADING}${term_reset}"
+
+    display_ensure_dir "${DOTFILES_DIR}" "config" || return 1
+    display_ensure_dir "${BACKUP_DIR}" "backup" || return 1
+    [ "${sync_root}" -eq 1 ] && {
+        display_ensure_dir "${ROOT_BACKUP_DIR}" "root backup" || return 1;
+    }
+
+    ensure_dotfiles_dir || return 1
+
+    local SUCCESS=0
+    local DOTFILE_GROUP
+    for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        display_ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" "${DOTFILE_GROUP} group" || SUCCESS=1
+    done
+    echo
+
+    return "${SUCCESS}"
+}
+
+ensure_dotfiles_dir() {
+    [ -d "${DOTFILES_DIR}" ] && return 0
+
+    if [ -z "${DOTFILES_REPO}" ]; then
+        error "Missing dotfiles repo config"
+        return 1
+    fi
+
+    if ! clone_repo "${DOTFILES_REPO}" "${DOTFILES_DIR}"; then
+        error "Failed to clone ${DOTFILES_REPO}"
+        echo
+        return 1
+    fi
+
+    [ -d "${DOTFILES_DIR}" ]
+}
+
+sync_config_to_home() {
+    local BACKUP_DIR="${1%/}"
+    local GROUP
+    local SRC_DIR
+    local EXCLUDE_NAMES=()
+    local EXCLUDE_PATHS=()
+
+    heading "Sync ${HOME_DIR}"
+
+    if [ "${#DOTFILE_GROUP_LIST[@]}" = 0 ]; then
+        echo "No repo groups available"
+        return 1
+    fi
+
+    local SYNC_EXCLUDE
+    for SYNC_EXCLUDE in "${SYNC_EXCLUDE_LIST[@]}"; do
+        EXCLUDE_NAMES+=(-not -name "${SYNC_EXCLUDE}")
+    done
+
+    # Spin through groups syncing files
+    # Skip files handled by a previous group
+    for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        SRC_DIR="${DOTFILES_DIR}/${GROUP}"
+        cdd "${SRC_DIR}"
+
+        while read -r -d $'\0' FILE; do
+            # Skip dir if it contains a `${DOTFILE_MARKER}`
+            if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
+                [ "${DEBUG}" -gt 0 ] && echo "Skip nested dir: ${FILE}"
+                continue
+            fi
+
+            # Skip file unless it's next to a `${DOTFILE_MARKER}`
+            if [ -e "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
+                [ "${DEBUG}" -gt 0 ] && echo "Skip non dotfile: ${FILE}"
+                continue
+            fi
+
+            # Make sure we don't match this file again in another group
+            EXCLUDE_PATHS+=(-not -path "${FILE}")
+
+            smart_link "${GROUP}" "${SRC_DIR}" "${HOME_DIR}" "${BACKUP_DIR}" "${FILE/.\//}"
+        done < <(find . -mindepth 1 "${EXCLUDE_NAMES[@]}" "${EXCLUDE_PATHS[@]}" -print0)
+    done
+
+    if [ "${#EXCLUDE_PATHS[@]}" -eq 0 ]; then
+        info "No files in config repo, get started with \"dotfile import\""
+    fi
+    echo
 }

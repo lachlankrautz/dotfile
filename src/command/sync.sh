@@ -16,7 +16,7 @@ dotfile_command_sync() {
     title_sync
     display_ensure_filesystem
     sync_config_to_home "${BACKUP_DIR}"
-    [ "${sync_root}" -eq 1 ] && sudo_command sync_config_to_home "${ROOT_BACKUP_DIR}"
+    [ "${sync_root}" -eq 1 ] && run_with_sudo sync_config_to_home "${ROOT_BACKUP_DIR}"
 }
 
 display_ensure_filesystem() {

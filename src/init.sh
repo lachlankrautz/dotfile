@@ -37,10 +37,11 @@ source_files_in_dir "lib/workshop" "dispatch.sh"
 source_files_in_dir "lib/bash-ini-parser" "bash-ini-parser"
 source_files_in_dir "src" "functions.sh"
 source_files_in_dir "src/command" \
-    "import.sh" \
-    "export.sh" \
-    "scp.sh" \
     "docker.sh" \
+    "export.sh" \
+    "import.sh" \
+    "install.sh" \
+    "scp.sh" \
     "sync.sh" \
     "update.sh"
 

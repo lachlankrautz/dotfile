@@ -15,9 +15,9 @@ install_dotfile() {
 
     local UNAME
     UNAME="$(uname)"
-    WINDOWS=0
+    MSYS=0
     if [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
-        WINDOWS=1
+        MSYS=1
         SUDO_CMD=""
         if [ ! -d "/opt" ]; then
             mkdir "/opt"
@@ -36,16 +36,6 @@ install_dotfile() {
         PATH_INSTALL="/opt"
     else
         echo "No suitable install dir found"
-        return 1
-    fi
-
-    PATH_BIN=""
-    if [ -d "/usr/local/bin" ]; then
-        PATH_BIN="/usr/local/bin"
-    elif [ -d "/usr/bin" ]; then
-        PATH_BIN="/usr/bin"
-    else
-        echo "No reasonable bin dir available"
         return 1
     fi
 
@@ -97,8 +87,8 @@ install_dotfile() {
         return 1
     fi
 
-    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/dotfile" "${PATH_BIN}/dotfile" || return 1
-    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/install" "${PATH_BIN}/dotfile-update" || return 1
+    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/dotfile" /usr/local/bin/dotfile || return 1
+    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/install" /usr/local/bin/dotfile-update || return 1
     echo
 
     # run to make sure config file is created for current user
@@ -142,9 +132,8 @@ ensure_link() {
         NEED_LINK=1
     fi
     if [ "${NEED_LINK}" -eq 1 ]; then
-
         echo "Creating system link"
-        if [ "${WINDOWS}" -eq 1 ]; then
+        if [ "${MSYS}" -eq 1 ]; then
             WIN_SRC="$(cygpath -w "${SRC}")"
             WIN_DEST="$(cygpath -w "${DEST}")"
             local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"

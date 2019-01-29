@@ -89,14 +89,14 @@ clone_repo() {
     return 0
 }
 
-sudo_command() {
-    local SUDO_COMMAND="${1}"; shift;
+run_with_sudo() {
+    local RUN_WITH_SUDO="${1}"; shift;
     sudo -s << EOF
 PATH_BASE="${PATH_BASE}"
 TRUE_HOME_DIR="${HOME_DIR}"
 PREVIEW="${PREVIEW}"
 source "${PATH_BASE}/src/init.sh"
-${SUDO_COMMAND} "${@}"
+${RUN_WITH_SUDO} "${@}"
 EOF
 }
 
@@ -198,7 +198,7 @@ smart_link() {
     fi
 
     # Link exists but doesn't point to the right file
-    if [ -L "${DEST_FILE}" ] && [ ! -e "${DEST_FILE}" ]; then
+    if [ -L "${DEST_FILE}" ] && ( [ ! -e "${DEST_FILE}" ] || [ "${SRC_FILE}" != "$(readlink ${DEST_FILE})" ] ); then
         if [ "${PREVIEW}" -eq 1 ]; then
             echo_status "${term_fg_red}" "    Broken" "${DISPLAY_FILE_REF}"
             return 1
@@ -224,7 +224,7 @@ smart_link() {
         if [ "${PREVIEW}" -eq 1 ]; then
             echo_status "${term_fg_yellow}" "    Backup" "${DISPLAY_FILE_REF}"
         else
-            backup_move "${DEST}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
+            backup_move "${DEST_DIR}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
         fi
     fi
 
@@ -244,7 +244,22 @@ smart_link() {
     fi
 
     # Create link and save status
-    if [ "${WINDOWS}" -eq 1 ]; then
+    create_link "${SRC_FILE}" "${DEST_FILE}"
+    local STATUS="${?}"
+
+    if [ "${STATUS}" -eq 0 ]; then
+        echo_status "${term_fg_green}" "   Created" "${DISPLAY_FILE_REF}"
+    else
+        echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
+    fi
+    return "${STATUS}"
+}
+
+create_link() {
+    local SRC_FILE="${1}"
+    local DEST_FILE="${2}"
+
+    if [ "${MSYS}" -eq 1 ]; then
         [ -d "${SRC_FILE}" ] && OPT="/D " || OPT=""
 
         local WIN_SRC_FILE
@@ -260,14 +275,6 @@ smart_link() {
         # Unix link attempt
         ln -s "${SRC_FILE}" "${DEST_FILE}" > /dev/null 2>&1
     fi
-    local STATUS="${?}"
-
-    if [ "${STATUS}" -eq 0 ]; then
-        echo_status "${term_fg_green}" "   Created" "${DISPLAY_FILE_REF}"
-    else
-        echo_status "${term_fg_red}" "    Failed" "${DISPLAY_FILE_REF}"
-    fi
-    return "${STATUS}"
 }
 
 backup_move() {
@@ -410,23 +417,30 @@ cleanup_nested_dir() {
 
 # shellcheck disable=SC2034
 load_global_variables() {
-
     HELP="${HELP-0}"
     PREVIEW="${PREVIEW-0}"
     DEBUG="${DEBUG-0}"
 
     # Platform
     local UNAME
-    UNAME="$(uname)"
+    UNAME="$(uname -a)"
     local LINUX=0
     local OSX=0
-    WINDOWS=0
-    if [ "${UNAME}" = "Linux" ]; then
+    MSYS=0
+    local WSL=0
+    SUDO_COMMAND=sudo
+    if [[ ${UNAME} =~ ^Linux.*$ ]]; then
         LINUX=1
-    elif [ "${UNAME}" = "Darwin" ]; then
+    fi
+    if [[ ${UNAME} = ^Darwin.*$ ]]; then
         OSX=1
-    elif [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
-        WINDOWS=1
+    fi
+    if [[ ${UNAME} =~ ^(MINGW|MSYS).*$ ]]; then
+        MSYS=1
+        SUDO_COMMAND=
+    fi
+    if [[ ${UNAME} =~ ^.*Microsoft.*$ ]]; then
+        WSL=1
     fi
 
     # Home dir
@@ -447,8 +461,9 @@ load_global_variables() {
     # Order is important
     DOTFILE_GROUP_LIST=()
     [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
-    [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
-    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("osx")
+    [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
+    [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
+    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
     [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
     DOTFILE_GROUP_LIST+=("shared")
 

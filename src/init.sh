@@ -19,16 +19,14 @@ load_global_variables() {
     local OSX=0
     MSYS=0
     local WSL=0
-    SUDO_COMMAND=sudo
     if [[ ${UNAME} =~ ^Linux.*$ ]]; then
         LINUX=1
     fi
-    if [[ ${UNAME} = ^Darwin.*$ ]]; then
+    if [[ ${UNAME} =~ ^Darwin.*$ ]]; then
         OSX=1
     fi
     if [[ ${UNAME} =~ ^(MINGW|MSYS).*$ ]]; then
         MSYS=1
-        SUDO_COMMAND=
     fi
     if [[ ${UNAME} =~ ^.*Microsoft.*$ ]]; then
         WSL=1
@@ -50,11 +48,11 @@ load_global_variables() {
     DOTFILE_GROUP_LIST=()
 
     # Order of dotfile overrides
-    [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
     [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
-    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
-    [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
     [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
+    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
+    [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
+    [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
     DOTFILE_GROUP_LIST+=("shared")
 
     local DOTFILE_GROUP

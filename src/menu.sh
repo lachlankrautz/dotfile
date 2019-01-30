@@ -13,8 +13,13 @@ dotfile_call_() {
 }
 
 dotfile_option_v() {
-    dotfile_option_version
+    dotfile_option_verbose "${@}"
 }
+dotfile_option_verbose() {
+    verbose 1
+    dispatch dotfile "$@"
+}
+
 dotfile_option_version() {
     echo "Version ${term_fg_yellow}2.0.0${term_reset}"
 }
@@ -144,7 +149,7 @@ dotfile_command_import() {
 dotfile_command_install() {
     title_install
 
-    ${SUDO_COMMAND} create_link "${PATH_BASE}/bin/dotfile" /usr/local/bin/dotfile || return 1
+    create_link "${PATH_BASE}/bin/dotfile" /usr/local/bin/dotfile 1 || return 1
 }
 
 dotfile_command_scp() {

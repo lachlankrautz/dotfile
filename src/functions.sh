@@ -101,8 +101,9 @@ ${term_fg_yellow}Usage:${term_reset}
 
 ${term_fg_yellow}Options:${term_reset}
   ${term_fg_green}-h, --help${term_reset}               Display general usage or command help
-  ${term_fg_green}-v, --version${term_reset}            Display version
+  ${term_fg_green}--version${term_reset}                Display version
   ${term_fg_green}-p, --preview${term_reset}            Preview changes without writing
+  ${term_fg_green}-v, --verbose${term_reset}            Set verbosity
 
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}                     Sync config dotfiles to home dir
@@ -279,12 +280,24 @@ smart_link() {
     fi
 
     # Link exists but doesn't point to the right file
-    if [ -L "${DEST_FILE}" ] && ( [ ! -e "${DEST_FILE}" ] || [ "${SRC_FILE}" != "$(readlink ${DEST_FILE})" ] ); then
-        if [ "${PREVIEW}" -eq 1 ]; then
-            echo_status "${term_fg_red}" "    Broken" "${DISPLAY_FILE_REF}"
-            return 1
-        else
+    if [ -L "${DEST_FILE}" ]; then
+        local LINK_ISSUE=()
+        local LINKED_TO
+        LINKED_TO="$(readlink ${DEST_FILE})"
+        if [ "${SRC_FILE}" != "${LINKED_TO}" ]; then
+            LINK_ISSUE=(" Incorrect" "${DISPLAY_FILE_REF} (${LINKED_TO} should be ${SRC_FILE})")
+        elif  [ ! -e "${DEST_FILE}" ]; then
+            LINK_ISSUE=("    Broken" "${DISPLAY_FILE_REF}")
+        fi
+
+        if [ "${#LINK_ISSUE[@]}" -gt 0 ]; then
+            if [ "${PREVIEW}" -eq 1 ]; then
+                echo_status "${term_fg_red}" "${LINK_ISSUE[@]}"
+                return 1
+            fi
+
             # Remove bad link
+            echo_status "${term_fg_green}" "    Fixing" "${DISPLAY_FILE_REF}"
             rm "${DEST_FILE}"
         fi
     fi
@@ -295,17 +308,35 @@ smart_link() {
         return 0
     fi
 
-    # File already exists and needs to be backed up
+    # File already exists
     if [ -e "${DEST_FILE}" ]; then
-        if [ ! -d "${BACKUP}" ]; then
-            error "Missing backup dir: ${BACKUP}"
-            return 1
-        fi
-
-        if [ "${PREVIEW}" -eq 1 ]; then
-            echo_status "${term_fg_yellow}" "    Backup" "${DISPLAY_FILE_REF}"
+        if [ -f "${SRC_FILE}" ] && [ -f "${DEST_FILE}" ] \
+                && cmp --silent "${SRC_FILE}" "${DEST_FILE}"; then
+            # Delete if files are identical
+            if [ "${PREVIEW}" -eq 1 ]; then
+                echo_status "${term_fg_red}" "    Remove" "${DISPLAY_FILE_REF} (identical contents)"
+            else
+                echo_status "${term_fg_yellow}" "   Removed" "${DISPLAY_FILE_REF} (identical contents)"
+                rm "${DEST_FILE}"
+            fi
         else
-            backup_move "${DEST_DIR}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
+            # Backup
+            if [ ! -d "${BACKUP}" ]; then
+                error "Missing backup dir: ${BACKUP}"
+                return 1
+            fi
+
+            if [ "${PREVIEW}" -eq 1 ]; then
+                echo_status "${term_fg_yellow}" "    Backup" "${DISPLAY_FILE_REF}"
+
+                # File contents differ
+                if [ -f "${SRC_FILE}" ] && [ -f "${DEST_FILE}" ] \
+                        && ! cmp --silent "${SRC_FILE}" "${DEST_FILE}" && verbose; then
+                    git --no-pager diff --no-index "${SRC_FILE}" "${DEST_FILE}"
+                fi
+            else
+                backup_move "${DEST_DIR}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
+            fi
         fi
     fi
 
@@ -339,6 +370,7 @@ smart_link() {
 create_link() {
     local SRC_FILE="${1}"
     local DEST_FILE="${2}"
+    local USE_SUDO="${3-0}"
 
     if [ "${MSYS}" -eq 1 ]; then
         [ -d "${SRC_FILE}" ] && OPT="/D " || OPT=""
@@ -353,8 +385,13 @@ create_link() {
         # Windows link attempt
         cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
     else
+        local LINK_COMMAND=()
+        if [ "${USE_SUDO}" -eq 1 ] && which sudo > /dev/null 2>&1; then
+            LINK_COMMAND+=(sudo)
+        fi
+        LINK_COMMAND+=(ln -s "${SRC_FILE}" "${DEST_FILE}")
         # Unix link attempt
-        ln -s "${SRC_FILE}" "${DEST_FILE}" > /dev/null 2>&1
+        "${LINK_COMMAND[@]}" > /dev/null 2>&1
     fi
 }
 

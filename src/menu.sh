@@ -65,7 +65,7 @@ dotfile_command_export() {
         return 1
     fi
 
-    if truth "${PREVIEW}"; then
+    if [ "${PREVIEW}" -eq 1 ]; then
         info "Preview"
         echo
     fi
@@ -83,14 +83,14 @@ dotfile_command_export() {
         return 1
     fi
 
-    local SUCCESS=0
+    local STATUS=0
     local DOTFILE
     for DOTFILE in "${DOTFILE_LIST[@]}"; do
-        export_dotfile "${DOTFILE}" || SUCCESS=1
+        export_dotfile "${DOTFILE}" || STATUS=1
     done
     echo
 
-    return "${SUCCESS}"
+    return "${STATUS}"
 }
 
 dotfile_command_import() {
@@ -115,7 +115,7 @@ dotfile_command_import() {
         return 1
     fi
 
-    if truth "${PREVIEW}"; then
+    if [ "${PREVIEW}" -eq 1 ]; then
         info "Preview"
         echo
     fi

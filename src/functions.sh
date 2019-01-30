@@ -587,21 +587,6 @@ EOF
     sync
 }
 
-# TODO remove this whole function and use /*/ expansion to wildcard over the group
-file_ref() {
-    local FILE_REF_PATH="${1}"
-    if [ -z "${FILE_REF_PATH}" ]; then
-        error "Missing file ref param"
-        return 1
-    fi
-
-    local DOTFILE_GROUP_PATTERN
-    DOTFILE_GROUP_PATTERN="${DOTFILES_DIR}/($(implode "|" "${DOTFILE_GROUP_LIST[@]}"))/" || return 1
-    local ESCAPED_PATTERN="${DOTFILE_GROUP_PATTERN//\//\\/}"
-
-    echo "${FILE_REF_PATH}" | sed -E 's/'"${ESCAPED_PATTERN}"'//g'
-}
-
 doc_title() {
     local LINE=""
     echo -n "${term_bold}${term_fg_blue}"
@@ -661,11 +646,6 @@ export_dotfile() {
         return 1
     fi
 
-    if truth "${PREVIEW}"; then
-        echo_status "${term_fg_white}" "    Export" "${EXPORT_FILE}"
-        return 0
-    fi
-
     REPO_FILE="$(readlink "${EXPORT_FILE}")"
     if [ -z "${REPO_FILE}" ]; then
         error "Missing linked file for ${EXPORT_FILE}"
@@ -676,9 +656,14 @@ export_dotfile() {
         echo
         return 1
     fi
-    FILE_REF="$(file_ref "${REPO_FILE}")"
+    local FILE_REF="${REPO_FILE/${DOTFILES_DIR}\/*\//}"
     local DOTFILE_GROUP_DIR="${REPO_FILE/\/${FILE_REF}/}"
     REPO_DIR="${REPO_FILE%/*}"
+
+    if [ "${PREVIEW}" -eq 1 ]; then
+        echo_status "${term_fg_white}" "    Export" "${EXPORT_FILE}"
+        return 0
+    fi
 
     if ! rm "${EXPORT_FILE}"; then
         error "Failed to remove link ${EXPORT_FILE}"
@@ -718,7 +703,7 @@ import_dotfile() {
         return 1
     fi
 
-    if truth "${PREVIEW}"; then
+    if [ "${PREVIEW}" -eq 1 ]; then
         echo_status "${term_fg_white}" "    Import" "${FILE_REF}"
         return 0
     fi

@@ -45,13 +45,22 @@ dotfile_command_docker() {
 }
 
 dotfile_command_export() {
-    local INPUT="${1%/}"
-    local PATTERN="${INPUT##*/}"
+    local PATTERN="${1##*/}"
     local SEARCH_DIR_PART="${1/${PATTERN}/}"
     local SEARCH_DIR
     SEARCH_DIR="$(abspath "${HOME_DIR}/$(relpath "${SEARCH_DIR_PART}" "${HOME_DIR}")")"
+    local INPUT_FILES=("${@}")
 
     title_export
+    echo "pattern: ${PATTERN}"
+    echo "dir part: ${SEARCH_DIR_PART}"
+    echo
+    for I in "${INPUT_FILES[@]}"; do
+        echo "${I}"
+        echo "link $(readlink "${I}")"
+        echo
+    done
+    return 1;
 
     if [ -z "${PATTERN}" ]; then
         echo "Missing file pattern"
@@ -295,4 +304,14 @@ dotfile_command_update() {
     info "git status"
     dotfile_git status
     echo
+}
+
+dotfile_command_test() {
+    local CURRENT=/c/Users/lach/AppData/Roaming
+    local TARGET=/c/Users
+
+    while [ "${CURRENT}" != "${TARGET}" ]; do
+        echo "${CURRENT}"
+        CURRENT="$(dirname "${CURRENT}")"
+    done
 }

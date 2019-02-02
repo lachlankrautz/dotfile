@@ -6,6 +6,10 @@ if [ "${DEBUG-0}" -gt 1 ]; then
     set -x
 fi
 
+cdd() {
+    cd "${1}" || die "Unable to cd to ${1}"
+}
+
 # shellcheck disable=SC2034
 load_global_variables() {
     HELP="${HELP-0}"
@@ -63,11 +67,10 @@ load_global_variables() {
 }
 
 source_files_in_dir() {
-    local PATH_TMP="${PWD}"
     local LIB_DIR="${PATH_BASE}/${1}"
     shift
 
-    cd "${LIB_DIR}" || exit 1
+    cdd "${LIB_DIR}"
     for LIB_FILE in "${@}"; do
         if [ "${DEBUG-0}" -eq 1 ]; then
             echo "source ${LIB_FILE}"
@@ -78,7 +81,7 @@ source_files_in_dir() {
             source "${LIB_FILE}"
         fi
     done
-    cd "${PATH_TMP}" || exit 1
+    cdd -
 }
 
 source_files_in_dir "lib/bashful" \

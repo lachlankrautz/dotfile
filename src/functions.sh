@@ -116,10 +116,6 @@ ${term_fg_yellow}Commands:${term_reset}
 EOF
 }
 
-cdd() {
-    cd "${1}" || die "Unable to cd to ${1}"
-}
-
 # BSD and GNU sed required different params
 sedi() {
     if sed --version >/dev/null 2>&1; then
@@ -130,12 +126,13 @@ sedi() {
     return "${?}"
 }
 
+# Execute git command in dotfiles dir
 dotfile_git() {
-    cdd "${DOTFILES_DIR}"
-    git "${@}"
-    local STATUS="${?}"
-    cdd - > /dev/null
-    return "${STATUS}"
+    # avoid altering current shell state
+    (
+      cdd "${DOTFILES_DIR}"
+      git "${@}"
+    )
 }
 
 dotfile_git_add() {
@@ -454,8 +451,7 @@ ensure_nested_dir() {
     local CURRENT_DIR
     local END_DIR="${DOTFILES_DIR}/${GROUP}"
 
-    cdd "${DIR}"
-    CURRENT_DIR="${PWD}"
+    CURRENT_DIR="${DIR}"
     while [ "${CURRENT_DIR}" != "${END_DIR}" ]; do
         IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_MARKER}"
         if [ ! -f "${IGNORE_FILE}" ]; then
@@ -466,8 +462,7 @@ ensure_nested_dir() {
             dotfile_git_add "${IGNORE_FILE}" || return 1
         fi
 
-        cdd ..
-        CURRENT_DIR="${PWD}"
+        CURRENT_DIR="$(dirname "${CURRENT_DIR}")"
     done
 
     return 0
@@ -498,6 +493,7 @@ cleanup_nested_dir() {
         return 1
     fi
 
+    # TODO rewrite without cd
     cdd "${EXPORT_DIR}"
     NESTED_DIR="${PWD}"
     while [ "${NESTED_DIR}" != "${DOTFILE_GROUP_DIR}" ]; do
@@ -794,8 +790,9 @@ sync_config_to_home() {
     # Skip files handled by a previous group
     for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         SRC_DIR="${DOTFILES_DIR}/${GROUP}"
-        cdd "${SRC_DIR}"
 
+        echo "src dir: ${SRC_DIR}"
+        echo "excludes: ${EXCLUDE_PATHS[*]}"
         while read -r -d $'\0' FILE; do
             # Skip dir if it contains a `${DOTFILE_MARKER}`
             if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
@@ -810,10 +807,11 @@ sync_config_to_home() {
             fi
 
             # Make sure we don't match this file again in another group
-            EXCLUDE_PATHS+=(-not -path "${FILE}")
+            # TODO figure out relative excludes
+            EXCLUDE_PATHS+=(-not -path "${DOTFILES_DIR}/*/${FILE/${DOTFILES_DIR}\/${GROUP}\//}}")
 
-            smart_link "${GROUP}" "${SRC_DIR}" "${HOME_DIR}" "${BACKUP_DIR}" "${FILE/.\//}"
-        done < <(find . -mindepth 1 "${EXCLUDE_NAMES[@]}" "${EXCLUDE_PATHS[@]}" -print0)
+            smart_link "${GROUP}" "${SRC_DIR}" "${HOME_DIR}" "${BACKUP_DIR}" "${FILE/${DOTFILES_DIR}\/${GROUP}\//}"
+        done < <(find "${SRC_DIR}" -mindepth 1 "${EXCLUDE_NAMES[@]}" "${EXCLUDE_PATHS[@]}" -print0)
     done
 
     if [ "${#EXCLUDE_PATHS[@]}" -eq 0 ]; then

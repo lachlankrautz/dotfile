@@ -57,18 +57,6 @@ EOF
     return 0
 }
 
-title_scp() {
-    doc_title << 'EOF'
-     ______________
-    / ___/ ___/ __ \
-   (__  ) /__/ /_/ /
-  /____/\___/ .___/
-           /_/
-
-EOF
-    return 0
-}
-
 title_sync() {
     doc_title << 'EOF'
      _______  ______  _____
@@ -91,39 +79,6 @@ title_update() {
 
 EOF
     return 0
-}
-
-usage() {
-    main_title
-    cat << EOF
-${term_fg_yellow}Usage:${term_reset}
-  dotfile [options] <command> <args>
-
-${term_fg_yellow}Options:${term_reset}
-  ${term_fg_green}-h, --help${term_reset}               Display general usage or command help
-  ${term_fg_green}--version${term_reset}                Display version
-  ${term_fg_green}-p, --preview${term_reset}            Preview changes without writing
-  ${term_fg_green}-v, --verbose${term_reset}            Set verbosity
-
-${term_fg_yellow}Commands:${term_reset}
-  ${term_fg_green}sync${term_reset}                     Sync config dotfiles to home dir
-  ${term_fg_green}import${term_reset} <pattern> [group] Import file into config group (default "shared")
-  ${term_fg_green}export${term_reset} <pattern>         Export file back out of config
-  ${term_fg_green}update${term_reset}                   Update config repo
-  ${term_fg_green}ssh${term_reset}    <user@host>       Sync remote host
-  ${term_fg_green}docker${term_reset} <container>       Sync docker container
-
-EOF
-}
-
-# BSD and GNU sed required different params
-sedi() {
-    if sed --version >/dev/null 2>&1; then
-        sed -i "${@}"
-    else
-        sed -i '' "${@}"
-    fi
-    return "${?}"
 }
 
 # Execute git command in dotfiles dir
@@ -261,14 +216,11 @@ ensure_file() {
 #
 smart_link() {
     local GROUP="${1%/}"
-    local SRC="${2%/}"
-    local DEST="${3%/}"
-    local BACKUP="${4%/}"
-    local FILE_REF="${5}"
-    local FILE_NAME="${5##*/}"
+    local FILE_REF="${2}"
+    local FILE_NAME="${2##*/}"
 
-    local SRC_FILE="${SRC}/${FILE_REF}"
-    local DEST_FILE="${DEST}/${FILE_REF}"
+    local SRC_FILE="${DOTFILES_DIR}/${GROUP}/${FILE_REF}"
+    local DEST_FILE="${HOME_DIR}/${FILE_REF}"
     local DEST_DIR="${DEST_FILE%/*}"
     local DISPLAY_FILE_REF="${FILE_REF}"
 
@@ -317,12 +269,6 @@ smart_link() {
                 rm "${DEST_FILE}"
             fi
         else
-            # Backup
-            if [ ! -d "${BACKUP}" ]; then
-                error "Missing backup dir: ${BACKUP}"
-                return 1
-            fi
-
             if [ "${PREVIEW}" -eq 1 ]; then
                 echo_status "${term_fg_yellow}" "    Backup" "${DISPLAY_FILE_REF}"
 
@@ -332,7 +278,7 @@ smart_link() {
                     git --no-pager diff --no-index "${SRC_FILE}" "${DEST_FILE}"
                 fi
             else
-                backup_move "${DEST_DIR}" "${BACKUP}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
+                backup_move "${DEST_DIR}" "${FILE_NAME}" "${DISPLAY_FILE_REF}" || return 1
             fi
         fi
     fi
@@ -340,7 +286,7 @@ smart_link() {
     # Preview
     if [ "${PREVIEW}" -eq 1 ]; then
         local COLOUR="${term_fg_white}"
-        if [ ! -d "${DEST}" ]; then
+        if [ ! -d "${DEST_DIR}" ]; then
             COLOUR="${term_fg_yellow}"
         fi
         echo_status "${COLOUR}" "      Link" "${DISPLAY_FILE_REF}"
@@ -394,11 +340,10 @@ create_link() {
 
 backup_move() {
     local SRC="${1%/}"
-    local BACKUP="${2%/}"
-    local FILE="${3##*/}"
-    local FILE_STATUS="${4}"
+    local FILE="${2##*/}"
+    local FILE_STATUS="${3}"
 
-    local DEST="${SRC/${HOME_DIR}/${BACKUP}}"
+    local DEST="${SRC/${HOME_DIR}/${BACKUP_DIR}}"
     local BACKUP_FILE
     BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
 
@@ -493,9 +438,7 @@ cleanup_nested_dir() {
         return 1
     fi
 
-    # TODO rewrite without cd
-    cdd "${EXPORT_DIR}"
-    NESTED_DIR="${PWD}"
+    NESTED_DIR="${EXPORT_DIR}"
     while [ "${NESTED_DIR}" != "${DOTFILE_GROUP_DIR}" ]; do
         IGNORE_FILE="${NESTED_DIR}/${DOTFILE_MARKER}"
 
@@ -517,18 +460,16 @@ cleanup_nested_dir() {
         fi
 
         # Leave dir, delete it, reset NESTED_DIR
-        cdd ..
         if ! rmdir "${NESTED_DIR}"; then
             error "Failed to remove ${NESTED_DIR}"
             return 1
         fi
         dotfile_git_add "${NESTED_DIR}" || return 1
-        NESTED_DIR="${PWD}"
+        NESTED_DIR="$(dirname "${NESTED_DIR}")"
     done
 
     return 0
 }
-
 
 ensure_config() {
     local PATH_CONFIG="${TRUE_HOME_DIR}/.config/dotfile"
@@ -628,12 +569,19 @@ heading() {
 
 export_dotfile() {
     local EXPORT_FILE="${1}"
+
     local REPO_DIR
     local REPO_FILE
     local FILE_REF
 
     if [ ! -e "${EXPORT_FILE}" ]; then
         echo_status "${term_fg_red}" "   Missing" "${EXPORT_FILE}"
+        return 1
+    fi
+
+    if [ "$(commonpath "${HOME_DIR}" "${EXPORT_FILE}")" != "${HOME_DIR}" ]; then
+        error "File must be inside home dir: ${HOME_DIR}: ${EXPORT_FILE}"
+        echo
         return 1
     fi
 
@@ -680,11 +628,12 @@ export_dotfile() {
 
 import_dotfile() {
     local GROUP="${1}"
-    local IMPORT_FILE="${2}"
-    local FILE_REF="${2//${HOME_DIR}\//}"
+    local IMPORT_FILE
+    IMPORT_FILE="$(abspath "${2}")"
+
+    local FILE_REF="${IMPORT_FILE//${HOME_DIR}\//}"
     local DOTFILE_PATH="${DOTFILES_DIR}/${GROUP}/${FILE_REF}"
     local IMPORT_DIR="${IMPORT_FILE%/*}"
-    local DOTFILES_DIR="${DOTFILE_PATH%/*}"
 
     if [ ! -e "${IMPORT_FILE}" ]; then
         echo_status "${term_fg_red}" "   Missing" "${FILE_REF}"
@@ -695,7 +644,7 @@ import_dotfile() {
         return 1
     fi
     if [ -L "${IMPORT_FILE}" ]; then
-        echo_status "${term_fg_red}" "      Link" "${FILE_REF}"
+        echo_status "${term_fg_red}" "    Linked" "${FILE_REF}"
         return 1
     fi
 
@@ -705,7 +654,7 @@ import_dotfile() {
     fi
 
     if [ "${HOME_DIR}" != "${IMPORT_DIR}" ]; then
-        ensure_nested_dir "${GROUP}" "${DOTFILES_DIR}" || return 1
+        ensure_nested_dir "${GROUP}" "${DOTFILE_PATH%/*}" || return 1
     fi
 
     if ! mv "${IMPORT_FILE}" "${DOTFILE_PATH}"; then
@@ -713,8 +662,7 @@ import_dotfile() {
         return 1
     fi
 
-    if ! smart_link "${GROUP}" "${HOME_DIR}" "${DOTFILES_DIR}" "${IMPORT_DIR}" \
-            "${BACKUP_DIR}" > /dev/null; then
+    if ! smart_link "${GROUP}" "${FILE_REF}" ; then
         return 1
     fi
     echo_status "${term_fg_green}" "  Imported" "${FILE_REF}"
@@ -734,10 +682,6 @@ display_ensure_filesystem() {
 
     display_ensure_dir "${DOTFILES_DIR}" "config" || return 1
     display_ensure_dir "${BACKUP_DIR}" "backup" || return 1
-    [ "${sync_root}" -eq 1 ] && {
-        display_ensure_dir "${ROOT_BACKUP_DIR}" "root backup" || return 1;
-    }
-
     ensure_dotfiles_dir || return 1
 
     local SUCCESS=0
@@ -768,11 +712,12 @@ ensure_dotfiles_dir() {
 }
 
 sync_config_to_home() {
-    local BACKUP_DIR="${1%/}"
     local GROUP
     local SRC_DIR
     local EXCLUDE_NAMES=()
     local EXCLUDE_PATHS=()
+    local FILE
+    local FILE_REF
 
     heading "Sync ${HOME_DIR}"
 
@@ -786,13 +731,12 @@ sync_config_to_home() {
         EXCLUDE_NAMES+=(-not -name "${SYNC_EXCLUDE}")
     done
 
+    local STATUS=0
     # Spin through groups syncing files
     # Skip files handled by a previous group
     for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         SRC_DIR="${DOTFILES_DIR}/${GROUP}"
 
-        echo "src dir: ${SRC_DIR}"
-        echo "excludes: ${EXCLUDE_PATHS[*]}"
         while read -r -d $'\0' FILE; do
             # Skip dir if it contains a `${DOTFILE_MARKER}`
             if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
@@ -806,11 +750,12 @@ sync_config_to_home() {
                 continue
             fi
 
-            # Make sure we don't match this file again in another group
-            # TODO figure out relative excludes
-            EXCLUDE_PATHS+=(-not -path "${DOTFILES_DIR}/*/${FILE/${DOTFILES_DIR}\/${GROUP}\//}}")
+            FILE_REF="${FILE/${DOTFILES_DIR}\/${GROUP}\//}"
 
-            smart_link "${GROUP}" "${SRC_DIR}" "${HOME_DIR}" "${BACKUP_DIR}" "${FILE/${DOTFILES_DIR}\/${GROUP}\//}"
+            # Make sure we don't match this file again in another group
+            EXCLUDE_PATHS+=(-not -path "${DOTFILES_DIR}/*/${FILE_REF}")
+
+            smart_link "${GROUP}" "${FILE_REF}" || STATUS=1
         done < <(find "${SRC_DIR}" -mindepth 1 "${EXCLUDE_NAMES[@]}" "${EXCLUDE_PATHS[@]}" -print0)
     done
 
@@ -818,4 +763,6 @@ sync_config_to_home() {
         info "No files in config repo, get started with \"dotfile import\""
     fi
     echo
+
+    return "${STATUS}"
 }

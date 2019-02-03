@@ -5,7 +5,7 @@ heading() {
     tput setaf 2
     echo -en "${MESSAGE}"
     tput sgr0
-    echo ""
+    echo
 }
 
 install_dotfile() {

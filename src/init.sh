@@ -6,6 +6,7 @@ if [ "${DEBUG-0}" -gt 1 ]; then
     set -x
 fi
 
+# Try to only use in subdirectories
 cdd() {
     cd "${1}" || die "Unable to cd to ${1}"
 }
@@ -15,6 +16,7 @@ load_global_variables() {
     HELP="${HELP-0}"
     PREVIEW="${PREVIEW-0}"
     DEBUG="${DEBUG-0}"
+    ACTIVE_GROUP=shared
 
     # Platform
     local UNAME
@@ -45,9 +47,10 @@ load_global_variables() {
     ensure_config || return 1
     DOTFILE_MARKER=".dotfilemarker"
     DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
-    BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup"
-    ROOT_BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
     SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
+    [ "${IS_ROOT}" -eq 0 ] \
+        && BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup" \
+        || BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
     DOTFILES_REPO="${config_repo}"
     DOTFILE_GROUP_LIST=()
 
@@ -67,10 +70,10 @@ load_global_variables() {
 }
 
 source_files_in_dir() {
-    local LIB_DIR="${PATH_BASE}/${1}"
+    local LIB_FILE
+    cdd "${PATH_BASE}/${1}"
     shift
 
-    cdd "${LIB_DIR}"
     for LIB_FILE in "${@}"; do
         if [ "${DEBUG-0}" -eq 1 ]; then
             echo "source ${LIB_FILE}"
@@ -81,7 +84,7 @@ source_files_in_dir() {
             source "${LIB_FILE}"
         fi
     done
-    cdd -
+    cdd - > /dev/null
 }
 
 source_files_in_dir "lib/bashful" \
@@ -93,8 +96,8 @@ source_files_in_dir "lib/bashful" \
     bashful-terminfo \
     bashful-utils
 
-source_files_in_dir "lib/workshop" "dispatch.sh"
-source_files_in_dir "lib/bash-ini-parser" "bash-ini-parser"
-source_files_in_dir "src" "functions.sh"
+source "${PATH_BASE}/lib/workshop/dispatch.sh"
+source "${PATH_BASE}/lib/bash-ini-parser/bash-ini-parser"
+source "${PATH_BASE}/src/functions.sh"
 
 load_global_variables || exit 1

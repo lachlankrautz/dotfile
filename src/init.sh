@@ -25,6 +25,7 @@ load_global_variables() {
     local OSX=0
     MSYS=0
     local WSL=0
+    local WINDOWS=0
     if [[ ${UNAME} =~ ^Linux.*$ ]]; then
         LINUX=1
     fi
@@ -33,9 +34,11 @@ load_global_variables() {
     fi
     if [[ ${UNAME} =~ ^(MINGW|MSYS).*$ ]]; then
         MSYS=1
+        WINDOWS=1
     fi
     if [[ ${UNAME} =~ ^.*Microsoft.*$ ]]; then
         WSL=1
+        WINDOWS=1
     fi
 
     # Home dir
@@ -54,9 +57,10 @@ load_global_variables() {
     DOTFILES_REPO="${config_repo}"
     DOTFILE_GROUP_LIST=()
 
-    # Order of dotfile overrides
+    # Order of dotfile groups, higher overrides lower
     [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
     [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
+    [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
     [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
     [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
     [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")

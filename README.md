@@ -1,13 +1,13 @@
 # dotfile
 
-Cross platform dotfile manager - Linux, OSX and Windows (msys2)
+Cross platform dotfile manager - Linux, MacOS and Windows (msys2|wsl)
 
 # Features
 - Sync config to home dir and /root home dir (optional)
 - Cross platform system links; `mklink [/D]` or `ln -s`
 - Import existing dotfile(s) into config dir
 - Backup existing files before replacing with links
-- Sync different files for different systems using repo groups (shared|windows|osx|linux|root)
+- Sync different files for different systems using repo groups (shared|msys|wsl|macos|linux|root)
 - Preview without making changes using `-p`, `--preview`
 - Remotely configure host
 

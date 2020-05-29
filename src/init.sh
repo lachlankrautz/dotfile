@@ -2,11 +2,7 @@
 # shellcheck disable=SC1090
 # shellcheck disable=SC2154
 
-if [ "${DEBUG-0}" -gt 1 ]; then
-    set -x
-fi
-
-# Try to only use in subdirectories
+# Try to only use in subshells
 cdd() {
     cd "${1}" || die "Unable to cd to ${1}"
 }
@@ -15,7 +11,6 @@ cdd() {
 load_global_variables() {
     HELP="${HELP-0}"
     PREVIEW="${PREVIEW-0}"
-    DEBUG="${DEBUG-0}"
     ACTIVE_GROUP=shared
 
     # Platform
@@ -79,14 +74,7 @@ source_files_in_dir() {
     shift
 
     for LIB_FILE in "${@}"; do
-        if [ "${DEBUG-0}" -eq 1 ]; then
-            echo "source ${LIB_FILE}"
-            time source "${LIB_FILE}"
-            echo
-            echo
-        else
-            source "${LIB_FILE}"
-        fi
+        source "${LIB_FILE}"
     done
     cdd - > /dev/null
 }

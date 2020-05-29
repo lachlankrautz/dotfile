@@ -21,6 +21,7 @@ ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}import${term_reset} <file...>   Import file into config
   ${term_fg_green}export${term_reset} <file...>   Export file back out of config
   ${term_fg_green}update${term_reset}             Update config repo
+  ${term_fg_green}config${term_reset}             Edit config file
 
 EOF
 }
@@ -83,6 +84,17 @@ dotfile_option_group() {
     shift
 
     dispatch dotfile "${@}"
+}
+
+dotfile_command_config() {
+    local CONFIG_FILE="${TRUE_HOME_DIR}/.config/dotfile/config.ini"
+
+    if [ ! -f "${CONFIG_FILE}" ]; then
+        echo "Missing config file: ${CONFIG_FILE}"
+        reutrn 1
+    fi
+
+    ${EDITOR:-vi} "${CONFIG_FILE}"
 }
 
 dotfile_command_export() {

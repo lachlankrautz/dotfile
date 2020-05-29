@@ -83,7 +83,7 @@ EOF
 
 # Execute git command in dotfiles dir
 dotfile_git() {
-    # avoid altering current shell state
+    # cd in a subshell to avoid altering current shell state
     (
       cdd "${DOTFILES_DIR}"
       git "${@}"
@@ -516,7 +516,7 @@ create_config() {
         config_repo=""
     fi
 
-    cat << EOF >> ${FILE}
+    cat << EOF >> "${FILE}"
 [dotfile]
 ;;; dir to clone config repo to
 config_dir=${config_dir}
@@ -742,17 +742,18 @@ sync_config_to_home() {
     # Skip files handled by a previous group
     for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         SRC_DIR="${DOTFILES_DIR}/${GROUP}"
+        info -c "Checking ${SRC_DIR}"
 
         while read -r -d $'\0' FILE; do
             # Skip dir if it contains a `${DOTFILE_MARKER}`
             if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
-                [ "${DEBUG}" -gt 0 ] && echo "Skip nested dir: ${FILE}"
+                info -c "Skip nested dir: ${FILE}"
                 continue
             fi
 
             # Skip file unless it's next to a `${DOTFILE_MARKER}`
             if [ -e "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
-                [ "${DEBUG}" -gt 0 ] && echo "Skip non dotfile: ${FILE}"
+                info -c "Skip non dotfile: ${FILE}"
                 continue
             fi
 

@@ -88,7 +88,7 @@ install_dotfile() {
     fi
 
     if [ ! -d /usr/local/bin ]; then
-	mkdir -p /usr/local/bin
+	    mkdir -p /usr/local/bin
     fi
     ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/dotfile" /usr/local/bin/dotfile || return 1
     ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/install" /usr/local/bin/dotfile-update || return 1

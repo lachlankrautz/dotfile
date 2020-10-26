@@ -87,6 +87,9 @@ install_dotfile() {
         return 1
     fi
 
+    if [ ! -d /usr/local/bin ]; then
+	mkdir -p /usr/local/bin
+    fi
     ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/dotfile" /usr/local/bin/dotfile || return 1
     ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/install" /usr/local/bin/dotfile-update || return 1
     echo
@@ -137,7 +140,7 @@ ensure_link() {
             WIN_SRC="$(cygpath -w "${SRC}")"
             WIN_DEST="$(cygpath -w "${DEST}")"
             local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
-            cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
+            cmd //C "${CMD_C}" > /dev/null
         else
             ${SUDO_CMD} ln -s "${SRC}" "${DEST}"
         fi

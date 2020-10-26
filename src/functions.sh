@@ -326,13 +326,10 @@ create_link() {
         local CMD_C="mklink ${OPT}${WIN_DEST_FILE} ${WIN_SRC_FILE}"
 
         # Windows link attempt
-        if [ "${DEBUG}" -eq 1 ]; then
-          echo "cmd //C \"${CMD_C}\""
-          cmd //C "${CMD_C}" > /dev/null || return 1
-        else
-          # Double forward slash to prevent msys messing with params
-          cmd //C "${CMD_C}" > /dev/null 2>&1 || return 1
-        fi
+        info -c "cmd //C \"${CMD_C}\""
+
+        # Double forward slash to prevent msys messing with params
+        cmd //C "${CMD_C}" > /dev/null || return 1
     else
         local LINK_COMMAND=()
         if [ "${USE_SUDO}" -eq 1 ] && command -v sudo > /dev/null 2>&1; then

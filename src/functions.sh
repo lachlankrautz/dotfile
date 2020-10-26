@@ -232,7 +232,7 @@ smart_link() {
     if [ -L "${DEST_FILE}" ]; then
         local LINK_ISSUE=()
         local LINKED_TO
-        LINKED_TO="$(readlink ${DEST_FILE})"
+        LINKED_TO="$(readlink "${DEST_FILE}")"
         if [ "${SRC_FILE}" != "${LINKED_TO}" ]; then
             LINK_ISSUE=(" Incorrect" "${DISPLAY_FILE_REF} (${LINKED_TO} should be ${SRC_FILE})")
         elif  [ ! -e "${DEST_FILE}" ]; then
@@ -326,10 +326,16 @@ create_link() {
         local CMD_C="mklink ${OPT}${WIN_DEST_FILE} ${WIN_SRC_FILE}"
 
         # Windows link attempt
-        cmd /C "\"${CMD_C}\"" > /dev/null 2>&1
+        if [ "${DEBUG}" -eq 1 ]; then
+          echo "cmd //C \"${CMD_C}\""
+          cmd //C "${CMD_C}" > /dev/null || return 1
+        else
+          # Double forward slash to prevent msys messing with params
+          cmd //C "${CMD_C}" > /dev/null 2>&1 || return 1
+        fi
     else
         local LINK_COMMAND=()
-        if [ "${USE_SUDO}" -eq 1 ] && which sudo > /dev/null 2>&1; then
+        if [ "${USE_SUDO}" -eq 1 ] && command -v sudo > /dev/null 2>&1; then
             LINK_COMMAND+=(sudo)
         fi
         LINK_COMMAND+=(ln -s "${SRC_FILE}" "${DEST_FILE}")
@@ -345,7 +351,7 @@ backup_move() {
 
     local DEST="${SRC/${HOME_DIR}/${BACKUP_DIR}}"
     local BACKUP_FILE
-    BACKUP_FILE="$(filename ${FILE})_${TIMESTAMP}$(extname ${FILE})"
+    BACKUP_FILE="$(filename "${FILE}")_${TIMESTAMP}$(extname "${FILE}")"
 
     if [ ! -d "${DEST}" ]; then
         if ! mkdir -p "${DEST}"; then

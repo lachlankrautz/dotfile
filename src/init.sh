@@ -53,6 +53,7 @@ load_global_variables() {
     DOTFILE_GROUP_LIST=()
 
     # Order of dotfile groups, higher overrides lower
+    [ -n "${custom_group}" ] && DOTFILE_GROUP_LIST+=("${custom_group}")
     [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
     [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
     [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")

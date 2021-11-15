@@ -523,6 +523,9 @@ config_repo=${config_repo}
 
 ;;; sync dotfiles to root
 sync_root=0
+
+;;; additional custom group
+;;; custom_group=
 EOF
     sync
 }

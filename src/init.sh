@@ -17,12 +17,23 @@ load_global_variables() {
     local UNAME
     UNAME="$(uname -a)"
     local LINUX=0
+    local LINUX_LAPTOP=0
     local OSX=0
     MSYS=0
     local WSL=0
     local WINDOWS=0
     if [[ ${UNAME} =~ ^Linux.*$ ]]; then
         LINUX=1
+        # laptop-ish types:
+        # - 8 portable
+        # - 9 laptop
+        # - 10 notebook
+        # - 11 handheld
+        # - 14 sub notebook
+        # - 30 tablet
+        if [[ $(cat /sys/class_dmi/id/chassis_type) =~ (8|9|10|11|14|30) ]]; then
+            LINUX_LAPTOP=1
+        fi
     fi
     if [[ ${UNAME} =~ ^Darwin.*$ ]]; then
         OSX=1
@@ -59,6 +70,7 @@ load_global_variables() {
     [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
     [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
     [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
+    [ "${LINUX_LAPTOP}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux_laptop")
     [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
     DOTFILE_GROUP_LIST+=("shared")
 

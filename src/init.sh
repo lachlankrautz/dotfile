@@ -31,7 +31,7 @@ load_global_variables() {
         # - 11 handheld
         # - 14 sub notebook
         # - 30 tablet
-        if [[ $(cat /sys/class/dmi/id/chassis_type) =~ (8|9|10|11|14|30) ]]; then
+        if [ -f /sys/class/dmi/id/chassis_type ] && [[ $(cat /sys/class/dmi/id/chassis_type) =~ (8|9|10|11|14|30) ]]; then
             LINUX_LAPTOP=1
         fi
     fi

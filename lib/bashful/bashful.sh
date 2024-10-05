@@ -101,6 +101,44 @@ squeeze() #{{{1
     sed "s%\(${char//%/\\%}\)\+%\1%g" | trim "$char"
 }
 
+trim() #{{{1
+{
+    # <doc:trim> {{{
+    #
+    # Removes all leading/trailing whitespace
+    #
+    # Usage examples:
+    #     echo "  foo  bar baz " | trim  #==> "foo  bar baz"
+    #
+    # </doc:trim> }}}
+
+    ltrim "$1" | rtrim "$1"
+}
+
+ltrim() #{{{1
+{
+    # <doc:ltrim> {{{
+    #
+    # Removes all leading whitespace (from the left).
+    #
+    # </doc:ltrim> }}}
+
+    local char=${1:-[:space:]}
+    sed "s%^[${char//%/\\%}]*%%"
+}
+
+rtrim() #{{{1
+{
+    # <doc:rtrim> {{{
+    #
+    # Removes all trailing whitespace (from the right).
+    #
+    # </doc:rtrim> }}}
+
+    local char=${1:-[:space:]}
+    sed "s%[${char//%/\\%}]*$%%"
+}
+
 commonprefix() #{{{1
 {
     # <doc:commonprefix> {{{

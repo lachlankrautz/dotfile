@@ -292,6 +292,9 @@ LIB_INCLUDES=(
     "bash-ini-parser/bash-ini-parser.sh"
 )
 for LIB_INCLUDE in "${LIB_INCLUDES[@]}"; do
+    # unfortunately has to be dynamic because the base path isn't known
+    # the libs have to be resolved relative to the installed script
+    # "/usr/local/bin/dotfile" or the one in this repo
     # shellcheck disable=SC1090
     source "${PATH_BASE}/lib/${LIB_INCLUDE}"
 done
@@ -792,8 +795,7 @@ create_config() {
     local FILE="${1}"
 
     if [ -z "${config_dir}" ]; then
-        # shellcheck disable=SC2088
-        config_dir="~/config"
+        config_dir="~""/config"
     fi
     if [ -z "${config_repo}" ]; then
         config_repo=""

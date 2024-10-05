@@ -242,7 +242,7 @@ load_global_variables() {
         MSYS=1
         WINDOWS=1
     fi
-    if [[ ${UNAME} =~ ^.*Microsoft.*$ ]]; then
+    if [[ ${UNAME} =~ ^.*[Mm]icrosoft.*$ ]]; then
         WSL=1
         WINDOWS=1
     fi

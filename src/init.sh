@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1090
+
+
+# many terminal colours reference and not assigned
+# they are assigned by another file
 # shellcheck disable=SC2154
 
 # Try to only use in subshells
@@ -87,6 +90,7 @@ source_files_in_dir() {
     shift
 
     for LIB_FILE in "${@}"; do
+        # shellcheck disable=SC1090
         source "${LIB_FILE}"
     done
     cdd - > /dev/null

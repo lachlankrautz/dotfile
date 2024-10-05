@@ -1,10 +1,10 @@
 # dotfile
 
-Cross platform dotfile manager - Linux, MacOS and Windows (msys2|wsl)
+Cross-platform dotfile manager - Linux, macOS and Windows (msys2|wsl)
 
 # Features
 - Sync config to home dir and /root home dir (optional)
-- Cross platform system links; `mklink [/D]` or `ln -s`
+- Cross-platform system links; `mklink [/D]` or `ln -s`
 - Import existing dotfile(s) into config dir
 - Backup existing files before replacing with links
 - Sync different files for different systems using repo groups (shared|msys|wsl|macos|linux|root)
@@ -13,7 +13,7 @@ Cross platform dotfile manager - Linux, MacOS and Windows (msys2|wsl)
 
 # Install
 ```
-$ bash <(curl -s https://raw.githubusercontent.com/lachlankrautz/dotfile/master/bin/install)
+????
 ```
 
 # Setup
@@ -30,12 +30,14 @@ dotfile import .emacs.d/init.el
 
 # Usage
 
+Preview sync dotfiles (no writes).
+
 ```
-$ dotfile
+$ dotfile -p sync
 
 ```
 
-# Example
+Sync dotfiles.
 
 ```
 $ dotfile sync

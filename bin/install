@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 
-heading() {
-    local MESSAGE="${1}"
-    tput setaf 2
-    echo -en "${MESSAGE}"
-    tput sgr0
-    echo
+PATH_BASE=
+
+find_me() {
+    # Find where we are installed through possible system links
+    local SOURCE="${BASH_SOURCE[0]}"
+    # resolve $SOURCE until the file is no longer a symlink
+    while [ -h "${SOURCE}" ]; do
+        PATH_BASE="$(cd -P "$(dirname "${SOURCE}")" && pwd)"
+        SOURCE="$(readlink "${SOURCE}")"
+        # if SOURCE was a relative symlink, we need to resolve it
+        # relative to the path where the symlink file was located
+        [[ ${SOURCE} != /* ]] && SOURCE="${PATH_BASE}/${SOURCE}"
+    done
+    PATH_BASE="$(cd -P "$(dirname "${SOURCE}")" && pwd)"
 }
 
-install_dotfile() {
-    local SUDO_CMD="sudo"
+main() {
+    find_me || return 1
 
     echo
 
@@ -18,118 +26,28 @@ install_dotfile() {
     MSYS=0
     if [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
         MSYS=1
-        SUDO_CMD=""
-        if [ ! -d "/opt" ]; then
-            mkdir "/opt"
-        fi
-    fi
-
-    if [ "${EUID}" -eq 0 ]; then
-        echo "Do not install as root; user home dir is needed"
-        return 1
-    fi
-
-    PATH_INSTALL=""
-    if [ -d "/usr/local/opt" ]; then
-        PATH_INSTALL="/usr/local/opt"
-    elif [ -d "/opt" ]; then
-        PATH_INSTALL="/opt"
-    else
-        echo "No suitable install dir found"
-        return 1
-    fi
-
-    if [ ! -d /tmp ]; then
-        echo "Missing temp dir"
-        return 1
-    fi
-
-    if [ -d /tmp/dotfile ]; then
-        rm -rf /tmp/dotfile
-        if [ ! "${?}" -eq 0 ]; then
-            echo "Unable to clear temp"
-            return 1
-        fi
-    fi
-
-    heading "::Downloading"
-    git clone --depth=1 --branch=master https://github.com/lachlankrautz/dotfile /tmp/dotfile
-    if [ ! "${?}" -eq 0 ]; then
-        echo "Unable to clone project"
-        return 1
-    fi
-
-    rm -rf /tmp/dotfile/.git /tmp/dotfile/.gitignore
-    if [ ! "${?}" -eq 0 ]; then
-        echo "Unable to clean up git files"
-        return 1
-    fi
-
-    chmod 755 /tmp/dotfile/bin/dotfile /tmp/dotfile/bin/install
-    if [ ! "${?}" -eq 0 ]; then
-        echo "Unable to set executable permissions"
-        return 1
-    fi
-
-    if [ -d "${PATH_INSTALL}/dotfile" ]; then
-        echo "Removing old version"
-        ${SUDO_CMD} rm -rf "${PATH_INSTALL}/dotfile"
-        if [ ! "${?}" -eq 0 ]; then
-            echo "Unable to remove old version"
-            return 1
-        fi
-    fi
-
-    echo "Moving to ${PATH_INSTALL}/dotfile"
-    ${SUDO_CMD} mv /tmp/dotfile "${PATH_INSTALL}"
-    if [ ! "${?}" -eq 0 ]; then
-        echo "Unable to move project to ${PATH_INSTALL}"
-        return 1
     fi
 
     if [ ! -d /usr/local/bin ]; then
-	    mkdir -p /usr/local/bin
+        mkdir -p /usr/local/bin || return 1
     fi
-    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/dotfile" /usr/local/bin/dotfile || return 1
-    ensure_link "${SUDO_CMD}" "${PATH_INSTALL}/dotfile/bin/install" /usr/local/bin/dotfile-update || return 1
-    echo
 
-    # run to make sure config file is created for current user
-    dotfile > /dev/null || return 1
-
-    heading "::Current config ~/.config/dotfile/config.ini"
-    tput setaf 3
-    cat ~/.config/dotfile/config.ini
-    tput sgr0
-    echo
-
-    heading "::Install completed"
-    dotfile --version
-    echo
-    exit 0
-}
-
-ensure_link() {
-    local SUDO_CMD="${1}"
-    local SRC="${2%/}"
-    local DEST="${3%/}"
-    local NAME="${3##*/}"
+    local SRC="${PATH_BASE}/dotfile"
+    local DEST=/usr/local/bin/dotfile
+    local NAME=dotfile
     local NEED_LINK=0
     local LINK
-    local WIN_SRC
-    local WIN_DEST
 
     echo "Checking executable: ${NAME}"
     LINK="$(readlink "${DEST}")"
 
-    if [ ! -z "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
+    if [ -n "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
         NEED_LINK=1
         echo "Existing link points elsewhere, removing"
-        ${SUDO_CMD} rm "${DEST}"
-        if [ ! "${?}" -eq 0 ]; then
+        rm "${DEST}" || {
             echo "Unable to remove bad link"
             return 1
-        fi
+        }
     fi
     if [ ! -f "${DEST}" ]; then
         NEED_LINK=1
@@ -137,28 +55,31 @@ ensure_link() {
     if [ "${NEED_LINK}" -eq 1 ]; then
         echo "Creating system link"
         if [ "${MSYS}" -eq 1 ]; then
+            local WIN_SRC
+            local WIN_DEST
             WIN_SRC="$(cygpath -w "${SRC}")"
             WIN_DEST="$(cygpath -w "${DEST}")"
             local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
-            cmd //C "${CMD_C}" > /dev/null
+            cmd //C "${CMD_C}" > /dev/null || {
+                echo "Unable to create system link (msys)"
+                return 1
+            }
         else
-            ${SUDO_CMD} ln -s "${SRC}" "${DEST}"
-        fi
-
-        if [ ! "${?}" -eq 0 ]; then
-            echo "Unable to create system link"
-            return 1
+            ln -s "${SRC}" "${DEST}" || {
+                echo "Unable to create system link"
+                return 1
+            }
         fi
     fi
 
-    local MESSAGE="${DEST} -> ${SRC}"
-    if [ -L "${DEST}" ] && [ "$(readlink "${DEST}")" = "${SRC}" ]; then
-        echo "Link confirmed ${MESSAGE}"
-        return 0
-    else
-        echo "Unable to install link ${MESSAGE}"
+    local LINK_DESCRIPTION="${DEST} -> ${SRC}"
+    if [ ! -L "${DEST}" ] || [ "$(readlink "${DEST}")" != "${SRC}" ]; then
+        echo "Unable to install link ${LINK_DESCRIPTION}"
         return 1
     fi
+
+    echo "Link confirmed ${LINK_DESCRIPTION}"
+    echo
 }
 
-install_dotfile
+main

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1090
 
 find_me() {
     # Find where we are installed through possible system links

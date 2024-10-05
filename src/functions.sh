@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+# many terminal colours reference and not assigned
+# they are assigned by another file
 # shellcheck disable=SC2154
 
 main_title() {
@@ -10,18 +13,6 @@ main_title() {
   \__,_/\____/\__/_/ /_/_/\___/
 
 EOF
-}
-
-title_docker() {
-    doc_title << 'EOF'
-         __           __
-    ____/ /___  _____/ /_____  _____
-   / __  / __ \/ ___/ //_/ _ \/ ___/
-  / /_/ / /_/ / /__/ ,< /  __/ /
-  \__,_/\____/\___/_/|_|\___/_/
-
-EOF
-    return 0
 }
 
 title_export() {

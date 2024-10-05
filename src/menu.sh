@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+# many terminal colours reference and not assigned
+# they are assigned by another file
 # shellcheck disable=SC2154
 
 usage() {
@@ -18,9 +21,8 @@ ${term_fg_yellow}Options:${term_reset}
 
 ${term_fg_yellow}Commands:${term_reset}
   ${term_fg_green}sync${term_reset}               Sync config dotfiles to home dir
-  ${term_fg_green}import${term_reset} <file...>   Import file into config
-  ${term_fg_green}export${term_reset} <file...>   Export file back out of config
-  ${term_fg_green}update${term_reset}             Update config repo
+  ${term_fg_green}import${term_reset} <file...>   Move file to config and create a link
+  ${term_fg_green}export${term_reset} <file...>   Remove link and move file back from config
   ${term_fg_green}config${term_reset}             Edit config file
 
 EOF
@@ -158,36 +160,6 @@ dotfile_command_sync() {
     display_ensure_filesystem || return 1
     sync_config_to_home || return 1
     [ "${sync_root}" -eq 1 ] && run_with_sudo sync_config_to_home
-}
-
-dotfile_command_update() {
-    title_update
-
-    if ! dotfile_git diff-index --quiet HEAD --; then
-        info "Local config changes detected"
-        echo
-
-        dotfile_git status
-        echo
-
-        question -p "Stage and commit changes?" -d "yes" || return 1
-        dotfile_git commit -p || return 1
-    fi
-
-    heading "Updating ${DOTFILES_REPO}"
-    echo
-
-    info "git pull --rebase"
-    dotfile_git pull --rebase
-    echo
-
-    info "git push"
-    dotfile_git push
-    echo
-
-    info "git status"
-    dotfile_git status
-    echo
 }
 
 dotfile_command_test() {

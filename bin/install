@@ -21,40 +21,37 @@ main() {
 
     echo
 
-    local UNAME
-    UNAME="$(uname)"
-    MSYS=0
-    if [[ "${UNAME}" =~ ^(MINGW|MSYS).*$ ]]; then
-        MSYS=1
-    fi
-
+    # macOS or other strange envs might not have `/usr/local/bin`
     if [ ! -d /usr/local/bin ]; then
         mkdir -p /usr/local/bin || return 1
     fi
 
     local SRC="${PATH_BASE}/dotfile"
     local DEST=/usr/local/bin/dotfile
-    local NAME=dotfile
-    local NEED_LINK=0
-    local LINK
 
-    echo "Checking executable: ${NAME}"
-    LINK="$(readlink "${DEST}")"
+    echo "Checking executable: dotfile"
 
-    if [ -n "${LINK}" ] && [ ! "${LINK}" = "${SRC}" ]; then
-        NEED_LINK=1
-        echo "Existing link points elsewhere, removing"
-        rm "${DEST}" || {
-            echo "Unable to remove bad link"
-            return 1
-        }
+    if [ -e "${DEST}" ]; then
+        if [ -L "${DEST}" ]; then
+            EXISTING_BIN_FILE="$(readlink "${DEST}")"
+            if [ "${EXISTING_BIN_FILE}" != "${SRC}" ]; then
+                echo "Existing link points elsewhere, removing"
+                rm "${DEST}" || {
+                    echo "Unable to remove bad link"
+                    return 1
+                }
+            fi
+        else
+            echo "Removing unknown existing file"
+            rm "${DEST}" || {
+                echo "Unable to remove existing file"
+                return 1
+            }
+        fi
     fi
     if [ ! -f "${DEST}" ]; then
-        NEED_LINK=1
-    fi
-    if [ "${NEED_LINK}" -eq 1 ]; then
         echo "Creating system link"
-        if [ "${MSYS}" -eq 1 ]; then
+        if [[ "$(uname)" =~ ^(MINGW|MSYS).*$ ]]; then
             local WIN_SRC
             local WIN_DEST
             WIN_SRC="$(cygpath -w "${SRC}")"

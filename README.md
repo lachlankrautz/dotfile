@@ -13,12 +13,10 @@ Cross-platform dotfile manager - Linux, macOS and Windows (msys2|wsl)
 
 # Install
 
-```
-# run the installer to create a link to the script
-# using a link not a copy so that the local installed
-# version can be edited without creating confusion as
-# to which version is running
-sudo bin/install
+Link the script into the PATH.
+
+```shell
+sudo make install
 ```
 
 # Setup
@@ -26,7 +24,7 @@ sudo bin/install
 - Edit config ~/.config/dotfile/config.ini
 - Import dotfiles into config repo 
 
-```bash
+```shell
 dotfile import .emacs.d/init.el
 ```
 

@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+
+OPT_FILE=
+
+main() {
+    echo "Installing dotfile"
+    echo
+
+    while getopts ":f:h" OPT; do
+        case "${OPT}" in
+          f) OPT_FILE="${OPTARG}";;
+          h)
+            usage
+            echo
+            exit 0
+            ;;
+          \?)
+            echo "ERROR: Invalid option: -"
+            return 1
+            ;;
+          :)
+            echo "ERROR: Option - requires an argument"
+            return 1
+            ;;
+        esac
+    done
+
+    if [ -z "${OPT_FILE}" ]; then
+        echo "ERROR: missing argument -f \"file\""
+        return 1
+    fi
+
+    if [ ! -f "${OPT_FILE}" ]; then
+        echo "ERROR: invalid file specified: ${OPT_FILE}"
+        return 1
+    fi
+
+    if ! [[ "${OPT_FILE}" =~ ^/ ]]; then
+        echo "ERROR: file path must be absolute: ${OPT_FILE}"
+        return 1
+    fi
+
+    # macOS or other strange envs might not have `/usr/local/bin`
+    if [ ! -d /usr/local/bin ]; then
+        mkdir -p /usr/local/bin || return 1
+    fi
+
+    local SRC="${OPT_FILE}"
+    local DEST=/usr/local/bin/dotfile
+
+    if [ -L "${DEST}" ]; then
+        # handle exising link
+        echo "Found existing link"
+        EXISTING_BIN_FILE="$(readlink "${DEST}")"
+        if [ "${EXISTING_BIN_FILE}" != "${SRC}" ]; then
+            echo "Existing link points elsewhere (${EXISTING_BIN_FILE}), removing"
+            rm "${DEST}" || {
+                echo "ERROR: Unable to remove bad link"
+                return 1
+            }
+        else
+            echo "Existing link matches target"
+        fi
+    elif [ -f "${DEST}" ]; then
+        # handle existing file (should not pick up a link)
+        echo "Removing unknown existing file"
+        rm "${DEST}" || {
+            echo "ERROR: Unable to remove existing file"
+            return 1
+        }
+    fi
+
+    if [ ! -L "${DEST}" ]; then
+        echo "Creating system link"
+        if [[ "$(uname)" =~ ^(MINGW|MSYS).*$ ]]; then
+            local WIN_SRC
+            local WIN_DEST
+            WIN_SRC="$(cygpath -w "${SRC}")"
+            WIN_DEST="$(cygpath -w "${DEST}")"
+            local CMD_C="mklink ${WIN_DEST} ${WIN_SRC}"
+            cmd //C "${CMD_C}" > /dev/null || {
+                echo "ERROR: Unable to create system link (msys)"
+                return 1
+            }
+        else
+            ln -s "${SRC}" "${DEST}" || {
+                echo "ERROR: Unable to create system link"
+                return 1
+            }
+        fi
+    fi
+
+    local LINK_DESCRIPTION="${DEST} -> ${SRC}"
+    if [ ! -L "${DEST}" ] || [ "$(readlink "${DEST}")" != "${SRC}" ]; then
+        echo "Unable to install link ${LINK_DESCRIPTION}"
+        return 1
+    fi
+
+    echo "Link confirmed ${LINK_DESCRIPTION}"
+    echo
+}
+
+main "${@}"

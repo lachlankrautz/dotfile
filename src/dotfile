@@ -1,8 +1,300 @@
 #!/usr/bin/env bash
 
-# many terminal colours reference and not assigned
-# they are assigned by another file
-# shellcheck disable=SC2154
+OPT_VERBOSE=0
+
+# exporting because colours are maybe used in subshells
+# not 100% sure, would be good to check
+export term_reset=
+export term_bold=
+export term_fg_blue=
+export term_fg_green=
+export term_fg_red=
+export term_fg_white=
+export term_fg_yellow=
+
+find_me() {
+    # Find where we are installed through possible system links
+    local SOURCE="${BASH_SOURCE[0]}"
+    # resolve $SOURCE until the file is no longer a symlink
+    while [ -h "${SOURCE}" ]; do
+        PATH_BASE="$(cd -P "$(dirname "${SOURCE}")" && pwd)"
+        SOURCE="$(readlink "${SOURCE}")"
+        # if SOURCE was a relative symlink, we need to resolve it
+        # relative to the path where the symlink file was located
+        [[ ${SOURCE} != /* ]] && SOURCE="${PATH_BASE}/${SOURCE}"
+    done
+    PATH_BASE="$(cd -P "$(dirname "${SOURCE}")/.." && pwd)"
+}
+find_me
+
+# Try to only use in subshells
+cdd() {
+    cd "${1}" || {
+        TODO_error "Unable to cd to ${1}"
+        exit 1
+    }
+}
+
+################
+## start menu ##
+################
+
+usage() {
+    main_title
+    local GROUP_LIST_DISPLAY
+    GROUP_LIST_DISPLAY="$(implode "|" "${DOTFILE_GROUP_LIST[@]}" | sed 's/|shared//')"
+    cat << EOF
+${term_fg_yellow}Usage:${term_reset}
+  dotfile [options] <command> <args>
+
+${term_fg_yellow}Options:${term_reset}
+  ${term_fg_green}-h, --help${term_reset}         Display general usage or command help
+  ${term_fg_green}--version${term_reset}          Display version
+  ${term_fg_green}-p, --preview${term_reset}      Preview changes without writing
+  ${term_fg_green}-g, --group${term_reset}        Use platform group instead of "shared" ie. (${GROUP_LIST_DISPLAY})
+  ${term_fg_green}-v, --verbose${term_reset}      Set verbosity level
+
+${term_fg_yellow}Commands:${term_reset}
+  ${term_fg_green}sync${term_reset}               Sync config dotfiles to home dir
+  ${term_fg_green}import${term_reset} <file...>   Move file to config and create a link
+  ${term_fg_green}export${term_reset} <file...>   Remove link and move file back from config
+  ${term_fg_green}config${term_reset}             Edit config file
+
+EOF
+}
+
+# Empty call
+dotfile_() {
+    usage
+}
+
+# Bad call
+dotfile_call_() {
+    usage
+    return 1
+}
+
+dotfile_option_v() {
+    dotfile_option_verbose "${@}"
+}
+dotfile_option_verbose() {
+    OPT_VERBOSE=1
+    dispatch dotfile "$@"
+}
+
+dotfile_option_version() {
+    echo "Version ${term_fg_yellow}2.0.0${term_reset}"
+}
+
+dotfile_option_h() {
+    dotfile_option_help "${@}"
+}
+dotfile_option_help() {
+    export HELP=1
+    dispatch dotfile "${@}"
+}
+
+dotfile_option_p() {
+    dotfile_option_preview "${@}"
+}
+dotfile_option_preview() {
+    export PREVIEW=1
+    dispatch dotfile "$@"
+}
+
+dotfile_option_g() {
+    dotfile_option_group "${@}"
+}
+dotfile_option_group() {
+    export ACTIVE_GROUP="${1}"
+    local GROUP
+    local FOUND=0
+    for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        if [ "${ACTIVE_GROUP}" = "${GROUP}" ]; then
+            FOUND=1
+        fi
+    done
+    if [ "${FOUND}" -eq 0 ]; then
+        TODO_error "Invalid group: ${ACTIVE_GROUP}"
+        return 1
+    fi
+    shift
+
+    dispatch dotfile "${@}"
+}
+
+dotfile_command_config() {
+    local CONFIG_FILE="${TRUE_HOME_DIR}/.config/dotfile/config.ini"
+
+    if [ ! -f "${CONFIG_FILE}" ]; then
+        echo "Missing config file: ${CONFIG_FILE}"
+        reutrn 1
+    fi
+
+    ${EDITOR:-vi} "${CONFIG_FILE}"
+}
+
+dotfile_command_export() {
+    title_export
+
+    if [ -z "${*}" ]; then
+        echo "Missing files to export"
+        echo
+        return 1
+    fi
+
+    if [ "${PREVIEW}" -eq 1 ]; then
+        TODO_info "Preview"
+        echo
+    fi
+
+    heading "Export ${term_fg_blue}$(implode " " "${@}")${term_reset}"
+
+    local FILES=("${@}")
+    local FILE
+    local STATUS=0
+    for FILE in "${FILES[@]}"; do
+        export_dotfile "${FILE}" || STATUS=1
+    done
+    return "${STATUS}"
+}
+
+dotfile_command_import() {
+    if [ -z "${*}" ]; then
+        echo "Missing files to import"
+        echo
+        return 1
+    fi
+
+    title_import
+
+    if [ "${PREVIEW}" -eq 1 ]; then
+        TODO_info "Preview"
+        echo
+    fi
+
+    heading "Import ${term_fg_blue}$(implode " " "${@}")${term_reset} into ${term_fg_blue}${DOTFILES_DIR}/${ACTIVE_GROUP}${term_reset}"
+
+    local FILES=("${@}")
+    local FILE
+    local STATUS=0
+    for FILE in "${FILES[@]}"; do
+        import_dotfile "${ACTIVE_GROUP}" "${FILE}" || STATUS=1
+    done
+    return "${STATUS}"
+}
+
+dotfile_command_sync() {
+    title_sync
+    display_ensure_filesystem || return 1
+    sync_config_to_home || return 1
+}
+
+dotfile_command_test() {
+    :
+}
+
+##############
+## end menu ##
+##############
+
+load_global_variables() {
+    HELP="${HELP-0}"
+    PREVIEW="${PREVIEW-0}"
+    ACTIVE_GROUP=shared
+
+    term_reset=$(tput sgr0)
+    term_bold=$(tput bold)
+    term_fg_blue=$(tput setaf 4)
+    term_fg_green=$(tput setaf 2)
+    term_fg_red=$(tput setaf 1)
+    term_fg_white=$(tput setaf 7)
+    term_fg_yellow=$(tput setaf 3)
+
+    # Platform
+    local UNAME
+    UNAME="$(uname -a)"
+    local LINUX=0
+    local LINUX_LAPTOP=0
+    local OSX=0
+    MSYS=0
+    local WSL=0
+    local WINDOWS=0
+    if [[ ${UNAME} =~ ^Linux.*$ ]]; then
+        LINUX=1
+        # laptop-ish types:
+        # - 8 portable
+        # - 9 laptop
+        # - 10 notebook
+        # - 11 handheld
+        # - 14 sub notebook
+        # - 30 tablet
+        if [ -f /sys/class/dmi/id/chassis_type ] && [[ $(cat /sys/class/dmi/id/chassis_type) =~ (8|9|10|11|14|30) ]]; then
+            LINUX_LAPTOP=1
+        fi
+    fi
+    if [[ ${UNAME} =~ ^Darwin.*$ ]]; then
+        OSX=1
+    fi
+    if [[ ${UNAME} =~ ^(MINGW|MSYS).*$ ]]; then
+        MSYS=1
+        WINDOWS=1
+    fi
+    if [[ ${UNAME} =~ ^.*Microsoft.*$ ]]; then
+        WSL=1
+        WINDOWS=1
+    fi
+
+    # Home dir
+    HOME_DIR=~
+    TRUE_HOME_DIR="${TRUE_HOME_DIR-${HOME_DIR}}"
+    [ "${LINUX}" -eq 1 ] && [ "${EUID}" -eq 0 ] && IS_ROOT=1 || IS_ROOT=0
+
+    # Depends on loaded config
+    config_dir=
+    custom_group=
+    ensure_config || return 1
+    if [ ! -d "${config_dir}" ]; then
+        TODO_error "failed to load a valid config dir"
+        return 1
+    fi
+
+    DOTFILE_MARKER=".dotfilemarker"
+    DOTFILES_DIR="${config_dir/${HOME_DIR}\//${TRUE_HOME_DIR}/}"
+    SYNC_EXCLUDE_LIST=(".git" ".gitignore" ".DS_Store" "${DOTFILE_MARKER}")
+    [ "${IS_ROOT}" -eq 0 ] \
+        && BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup" \
+        || BACKUP_DIR="${TRUE_HOME_DIR}/.config/dotfile/backup_root"
+    DOTFILES_REPO="${config_repo}"
+    DOTFILE_GROUP_LIST=()
+
+    # Order of dotfile groups, higher overrides lower
+    [ -n "${custom_group}" ] && DOTFILE_GROUP_LIST+=("${custom_group}")
+    [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
+    [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
+    [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
+    [ "${OSX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("darwin")
+    [ "${IS_ROOT}" -eq 1 ] &&  DOTFILE_GROUP_LIST+=("root")
+    [ "${LINUX_LAPTOP}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux_laptop")
+    [ "${LINUX}" -eq 1 ] && DOTFILE_GROUP_LIST+=("linux")
+    DOTFILE_GROUP_LIST+=("shared")
+
+    local DOTFILE_GROUP
+    for DOTFILE_GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
+        ensure_dir "${DOTFILES_DIR}/${DOTFILE_GROUP}" || return 1
+        ensure_file "${DOTFILES_DIR}/${DOTFILE_GROUP}/${DOTFILE_MARKER}" || return 1
+    done
+}
+
+LIB_INCLUDES=(
+    "bashful/bashful.sh"
+    "workshop/dispatch.sh"
+    "bash-ini-parser/bash-ini-parser.sh"
+)
+for LIB_INCLUDE in "${LIB_INCLUDES[@]}"; do
+    # shellcheck disable=SC1090
+    source "${PATH_BASE}/lib/${LIB_INCLUDE}"
+done
 
 main_title() {
     doc_title << 'EOF'
@@ -25,7 +317,6 @@ title_export() {
           /_/
 
 EOF
-    return 0
 }
 
 title_import() {
@@ -38,14 +329,6 @@ title_import() {
              /_/
 
 EOF
-    return 0
-}
-
-title_install() {
-    doc_title << 'EOF'
- // install //
-EOF
-    return 0
 }
 
 title_sync() {
@@ -59,17 +342,48 @@ title_sync() {
 EOF
 }
 
-title_update() {
-    doc_title << 'EOF'
-                     __      __
-    __  ______  ____/ /___ _/ /____
-   / / / / __ \/ __  / __ `/ __/ _ \
-  / /_/ / /_/ / /_/ / /_/ / /_/  __/
-  \__,_/ .___/\__,_/\__,_/\__/\___/
-      /_/
+TODO_debug() {
+    if [ "${OPT_VERBOSE}" -eq 0 ]; then
+        return
+    fi
+    echo "DEBUG: ${1}"
+}
 
-EOF
-    return 0
+TODO_info() {
+    # TODO
+    # term_bold
+    # term_fg_blue
+    # term_fg_white
+    # term_reset
+
+    # Shorten home paths, if they exist.
+    msg=${1//$HOME/\~}
+
+    echo -e "${term_bold}${term_fg_blue}==> ${term_fg_white}${msg}${term_reset}" >&2
+}
+
+TODO_error() {
+    # TODO
+    # term_bold
+    # term_fg_red
+    # term_fg_white
+    # term_reset
+
+    # Shorten home paths, if they exist.
+    msg=${1//$HOME/\~}
+
+    echo -e "${term_bold}${term_fg_red}ERROR: ${term_fg_white}${msg}${term_reset}" >&2
+}
+
+TODO_extname() {
+    # filename has no extension
+    [[ "${1}" == *.* ]] || return 0
+
+    echo ".${1##*.}"
+}
+
+TODO_filename() {
+    basename "$1" "$(extname "$1")"
 }
 
 # Execute git command in dotfiles dir
@@ -85,13 +399,13 @@ dotfile_git_add() {
     local TO_ADD="${1}"
     local IGNORE_RULES
     if ! dotfile_git add "${TO_ADD}"; then
-        error "Failed to stage ${TO_ADD} in git"
+        TODO_error "Failed to stage ${TO_ADD} in git"
 
         # Check if failed because of ignore rules
         IGNORE_RULES="$(dotfile_git check-ignore -v "${TO_ADD}")"
         if [ -n "${IGNORE_RULES}" ]; then
             echo
-            info "File ignored by git"
+            TODO_info "File ignored by git"
             echo "${IGNORE_RULES}"
         fi
 
@@ -106,32 +420,12 @@ clone_repo() {
     local NAME="${2}"
 
     if ! git clone "${GIT_REPO}" "${NAME}"; then
-        error "Failed to clone ${GIT_REPO}"
+        TODO_error "Failed to clone ${GIT_REPO}"
         return 1
     fi
 
-    info "Cloned ${GIT_REPO} => ${NAME}"
+    TODO_info "Cloned ${GIT_REPO} => ${NAME}"
     return 0
-}
-
-run_with_sudo() {
-    local RUN_WITH_SUDO="${1}"; shift;
-    sudo -s << EOF
-PATH_BASE="${PATH_BASE}"
-TRUE_HOME_DIR="${HOME_DIR}"
-PREVIEW="${PREVIEW}"
-source "${PATH_BASE}/src/init.sh"
-${RUN_WITH_SUDO} "${@}"
-EOF
-}
-
-ensure_not_root() {
-    if [ "${IS_ROOT}" -eq 1 ]; then
-        main_title
-        error "Must not run as root"
-        echo
-        return 1
-    fi
 }
 
 display_ensure_dir() {
@@ -140,17 +434,17 @@ display_ensure_dir() {
     local MESSAGE="${NAME} ${DIR}"
 
     if [ -z "${DIR}" ]; then
-        error "Dir param not set"
+        TODO_error "Dir param not set"
         return 1
     fi
 
     if [ -z "${NAME}" ]; then
-        error "Name param not set"
+        TODO_error "Name param not set"
         return 1
     fi
 
     if [ -d "${DIR}" ]; then
-        info "Found ${MESSAGE}"
+        TODO_info "Found ${MESSAGE}"
         return 0
     fi
 
@@ -158,7 +452,7 @@ display_ensure_dir() {
     local SUCCESS="${?}"
 
     if [ "${SUCCESS}" -eq 0 ]; then
-        info "Created ${MESSAGE}"
+        TODO_info "Created ${MESSAGE}"
     fi
 
     return "${SUCCESS}"
@@ -168,7 +462,7 @@ ensure_dir() {
     local DIR="${1}"
 
     if [ -z "${DIR}" ]; then
-        error "Dir param not set"
+        TODO_error "Dir param not set"
         return 1
     fi
 
@@ -177,7 +471,7 @@ ensure_dir() {
     fi
 
     if ! mkdir -p "${DIR}"; then
-        error "Failed to create ${DIR}"
+        TODO_error "Failed to create ${DIR}"
         return 1
     fi
 
@@ -190,7 +484,7 @@ ensure_file() {
     [ -f "${FILE}" ] && return 0
 
     if ! touch "${FILE}"; then
-        error "Failed to create ${FILE}"
+        TODO_error "Failed to create ${FILE}"
         return 1
     fi
 
@@ -317,7 +611,7 @@ create_link() {
         local CMD_C="mklink ${OPT}${WIN_DEST_FILE} ${WIN_SRC_FILE}"
 
         # Windows link attempt
-        info -c "cmd //C \"${CMD_C}\""
+        TODO_debug "cmd //C \"${CMD_C}\""
 
         # Double forward slash to prevent msys messing with params
         cmd //C "${CMD_C}" > /dev/null || return 1
@@ -339,11 +633,12 @@ backup_move() {
 
     local DEST="${SRC/${HOME_DIR}/${BACKUP_DIR}}"
     local BACKUP_FILE
-    BACKUP_FILE="$(filename "${FILE}")_${TIMESTAMP}$(extname "${FILE}")"
+
+    BACKUP_FILE="$(TODO_filename "${FILE}")_${TIMESTAMP}$(TODO_extname "${FILE}")"
 
     if [ ! -d "${DEST}" ]; then
         if ! mkdir -p "${DEST}"; then
-            error "Unable to create backup dir ${DEST}"
+            TODO_error "Unable to create backup dir ${DEST}"
             return 1
         fi
     fi
@@ -383,7 +678,7 @@ ensure_nested_dir() {
     local IGNORE_FILE
 
     if [ ! -d "${DIR}" ] && ! mkdir -p "${DIR}"; then
-        error "Unable to create nested dir: ${DIR}"
+        TODO_error "Unable to create nested dir: ${DIR}"
         return 1
     fi
 
@@ -395,7 +690,7 @@ ensure_nested_dir() {
         IGNORE_FILE="${CURRENT_DIR}/${DOTFILE_MARKER}"
         if [ ! -f "${IGNORE_FILE}" ]; then
             if ! touch "${IGNORE_FILE}"; then
-                error "Unable to create ${IGNORE_FILE}"
+                TODO_error "Unable to create ${IGNORE_FILE}"
                 return 1
             fi
             dotfile_git_add "${IGNORE_FILE}" || return 1
@@ -413,22 +708,22 @@ cleanup_nested_dir() {
     local NESTED_DIR
 
     if [ -z "${DOTFILE_GROUP_DIR}" ]; then
-        error "Missing dotfile group dir param"
+        TODO_error "Missing dotfile group dir param"
         return 1
     fi
 
     if [ ! -d "${DOTFILE_GROUP_DIR}" ]; then
-        error "Dotfile group dir must be a directory: ${DOTFILE_GROUP_DIR}"
+        TODO_error "Dotfile group dir must be a directory: ${DOTFILE_GROUP_DIR}"
         return 1
     fi
 
     if [ -z "${EXPORT_DIR}" ]; then
-        error "Missing export dir param"
+        TODO_error "Missing export dir param"
         return 1
     fi
 
     if [ ! -d "${EXPORT_DIR}" ]; then
-        error "Export dir must be a directory: ${EXPORT_DIR}"
+        TODO_error "Export dir must be a directory: ${EXPORT_DIR}"
         return 1
     fi
 
@@ -446,16 +741,16 @@ cleanup_nested_dir() {
             if [ "${REPLY}" != "${IGNORE_FILE}" ]; then
                 break 2
             fi
-        done < <(listdir "${NESTED_DIR}" -print0)
+        done < <(find "${NESTED_DIR}" -maxdepth 1 -mindepth 1 -print0)
 
         if ! rm "${IGNORE_FILE}"; then
-            error "Failed to remove ${IGNORE_FILE}"
+            TODO_error "Failed to remove ${IGNORE_FILE}"
             return 1
         fi
 
         # Leave dir, delete it, reset NESTED_DIR
         if ! rmdir "${NESTED_DIR}"; then
-            error "Failed to remove ${NESTED_DIR}"
+            TODO_error "Failed to remove ${NESTED_DIR}"
             return 1
         fi
         dotfile_git_add "${NESTED_DIR}" || return 1
@@ -471,7 +766,7 @@ ensure_config() {
 
     if [ ! -d "${PATH}" ]; then
         if ! mkdir -p "${PATH_CONFIG}"; then
-            error "Unable to create config dir: ${PATH_CONFIG}"
+            TODO_error "Unable to create config dir: ${PATH_CONFIG}"
             exit 1
         fi
     fi
@@ -479,14 +774,14 @@ ensure_config() {
     if [ ! -f "${FILE}" ]; then
         create_config "${FILE}"
         if [ ! -f "${FILE}" ]; then
-            error "Unable to create config file: ${FILE}"
+            TODO_error "Unable to create config file: ${FILE}"
             exit 1
         fi
     fi
 
     cfg_parser "${FILE}"
     if ! cfg_section_dotfile; then
-        error "Failed to load config: ${FILE}"
+        TODO_error "Failed to load config: ${FILE}"
         exit 1
     fi
 
@@ -511,9 +806,6 @@ config_dir=${config_dir}
 
 ;;; config repo address
 config_repo=${config_repo}
-
-;;; sync dotfiles to root
-sync_root=0
 
 ;;; additional custom group
 ;;; custom_group=
@@ -577,7 +869,7 @@ export_dotfile() {
     fi
 
     if [ "$(commonpath "${HOME_DIR}" "${EXPORT_FILE}")" != "${HOME_DIR}" ]; then
-        error "File must be inside home dir: ${HOME_DIR}: ${EXPORT_FILE}"
+        TODO_error "File must be inside home dir: ${HOME_DIR}: ${EXPORT_FILE}"
         echo
         return 1
     fi
@@ -589,11 +881,11 @@ export_dotfile() {
 
     REPO_FILE="$(readlink "${EXPORT_FILE}")"
     if [ -z "${REPO_FILE}" ]; then
-        error "Missing linked file for ${EXPORT_FILE}"
+        TODO_error "Missing linked file for ${EXPORT_FILE}"
         return 1
     fi
     if [ "$(commonpath "${DOTFILES_DIR}" "${REPO_FILE}")" != "${DOTFILES_DIR}" ]; then
-        error "Link must point to file inside ${DOTFILES_DIR}: ${REPO_FILE}"
+        TODO_error "Link must point to file inside ${DOTFILES_DIR}: ${REPO_FILE}"
         echo
         return 1
     fi
@@ -607,11 +899,11 @@ export_dotfile() {
     fi
 
     if ! rm "${EXPORT_FILE}"; then
-        error "Failed to remove link ${EXPORT_FILE}"
+        TODO_error "Failed to remove link ${EXPORT_FILE}"
         return 1
     fi
     if ! mv "${REPO_FILE}" "${EXPORT_FILE}"; then
-        error "Failed to restore ${EXPORT_FILE}"
+        TODO_error "Failed to restore ${EXPORT_FILE}"
         return 1
     fi
     dotfile_git_add "${REPO_FILE}" || return 1
@@ -669,7 +961,7 @@ import_dotfile() {
 
 display_ensure_filesystem() {
     if [ "${PREVIEW}" -eq 1 ]; then
-        info "Preview"
+        TODO_info "Preview"
         echo
     fi
 
@@ -695,12 +987,12 @@ ensure_dotfiles_dir() {
     [ -d "${DOTFILES_DIR}" ] && return 0
 
     if [ -z "${DOTFILES_REPO}" ]; then
-        error "Missing dotfiles repo config"
+        TODO_error "Missing dotfiles repo config"
         return 1
     fi
 
     if ! clone_repo "${DOTFILES_REPO}" "${DOTFILES_DIR}"; then
-        error "Failed to clone ${DOTFILES_REPO}"
+        TODO_error "Failed to clone ${DOTFILES_REPO}"
         echo
         return 1
     fi
@@ -733,18 +1025,18 @@ sync_config_to_home() {
     # Skip files handled by a previous group
     for GROUP in "${DOTFILE_GROUP_LIST[@]}"; do
         SRC_DIR="${DOTFILES_DIR}/${GROUP}"
-        info -c "Checking ${SRC_DIR}"
+        TODO_debug "Checking ${SRC_DIR}"
 
         while read -r -d $'\0' FILE; do
             # Skip dir if it contains a `${DOTFILE_MARKER}`
             if [ -d "${FILE}" ] && [ -f "${FILE}/${DOTFILE_MARKER}" ]; then
-                info -c "Skip nested dir: ${FILE}"
+                TODO_debug "Skip nested dir: ${FILE}"
                 continue
             fi
 
             # Skip file unless it's next to a `${DOTFILE_MARKER}`
             if [ -e "${FILE}" ] && [ ! -f "${FILE%/*}/${DOTFILE_MARKER}" ]; then
-                info -c "Skip non dotfile: ${FILE}"
+                TODO_debug "Skip non dotfile: ${FILE}"
                 continue
             fi
 
@@ -758,9 +1050,13 @@ sync_config_to_home() {
     done
 
     if [ "${#EXCLUDE_PATHS[@]}" -eq 0 ]; then
-        info "No files in config repo, get started with \"dotfile import\""
+        TODO_info "No files in config repo, get started with \"dotfile import\""
     fi
     echo
 
     return "${STATUS}"
 }
+
+load_global_variables || exit 1
+
+dispatch dotfile "$@"

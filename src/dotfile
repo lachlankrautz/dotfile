@@ -569,7 +569,7 @@ smart_link() {
 
                 # File contents differ
                 if [ -f "${SRC_FILE}" ] && [ -f "${DEST_FILE}" ] \
-                        && ! cmp --silent "${SRC_FILE}" "${DEST_FILE}" && verbose; then
+                        && ! cmp --silent "${SRC_FILE}" "${DEST_FILE}" && [ "${OPT_VERBOSE}" -eq 1 ]; then
                     git --no-pager diff --no-index "${SRC_FILE}" "${DEST_FILE}"
                 fi
             else

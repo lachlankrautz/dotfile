@@ -2,6 +2,8 @@
 
 OPT_VERBOSE=0
 
+MAJOR_VERSION="3"
+
 # exporting because colours are maybe used in subshells
 # not 100% sure, would be good to check
 export term_reset=
@@ -83,7 +85,7 @@ dotfile_option_verbose() {
 }
 
 dotfile_option_version() {
-    echo "Version ${term_fg_yellow}2.0.0${term_reset}"
+    echo "Version ${term_fg_yellow}${MAJOR_VERSION}${term_reset}"
 }
 
 dotfile_option_h() {
@@ -252,7 +254,7 @@ load_global_variables() {
 
     # Depends on loaded config
     config_dir=
-    custom_group=
+    custom_groups=
     ensure_config || return 1
     if [ ! -d "${config_dir}" ]; then
         TODO_error "failed to load a valid config dir"
@@ -269,7 +271,12 @@ load_global_variables() {
     DOTFILE_GROUP_LIST=()
 
     # Order of dotfile groups, higher overrides lower
-    [ -n "${custom_group}" ] && DOTFILE_GROUP_LIST+=("${custom_group}")
+    if [ -n "${custom_groups}" ]; then
+        IFS="," read -ra SPLIT_CUSTOM_GROUPS <<< "${custom_groups}"
+        for CUSTOM_GROUP in "${SPLIT_CUSTOM_GROUPS[@]}"; do
+            DOTFILE_GROUP_LIST+=("${CUSTOM_GROUP}")
+        done
+    fi
     [ "${MSYS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("msys")
     [ "${WSL}" -eq 1 ] && DOTFILE_GROUP_LIST+=("wsl")
     [ "${WINDOWS}" -eq 1 ] && DOTFILE_GROUP_LIST+=("windows")
@@ -766,6 +773,7 @@ cleanup_nested_dir() {
 ensure_config() {
     local PATH_CONFIG="${TRUE_HOME_DIR}/.config/dotfile"
     local FILE="${PATH_CONFIG}/config.ini"
+    config_version=unknown
 
     if [ ! -d "${PATH}" ]; then
         if ! mkdir -p "${PATH_CONFIG}"; then
@@ -788,6 +796,15 @@ ensure_config() {
         exit 1
     fi
 
+    if [ "${config_version}" != "${MAJOR_VERSION}" ]; then
+        TODO_error "Invalid config version!"
+        echo "Config created for a different program version and may be incompatible"
+        echo "  Program version: ${MAJOR_VERSION}"
+        echo "   Config version: ${config_version}"
+        echo "Update local config and retry"
+        return 1
+    fi
+
     return 0
 }
 
@@ -803,14 +820,17 @@ create_config() {
 
     cat << EOF >> "${FILE}"
 [dotfile]
+;;; compatability check
+config_version=${MAJOR_VERSION}
+
 ;;; dir to clone config repo to
 config_dir=${config_dir}
 
 ;;; config repo address
 config_repo=${config_repo}
 
-;;; additional custom group
-;;; custom_group=
+;;; comma delimited list of groups e.g. laptop,i3
+custom_groups=
 EOF
     sync
 }

@@ -1,0 +1,16 @@
+title = "Betterleaks config for dotfile"
+
+# Global Expr filter - acts as the single source of truth for ignoring findings
+# filter = '''
+#// Ignore common test credentials in any file
+#(
+#  filter.matchesAny(finding["rule_id"], ["generic-password"]) &&
+#  filter.matchesAny(finding["secret"], [
+#    `(?i)example`,
+#  ])
+#)
+#'''
+
+[extend]
+useDefault = true
+
